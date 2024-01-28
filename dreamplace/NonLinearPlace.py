@@ -156,9 +156,13 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 if params.gpu:
                     torch.cuda.synchronize()
+                # TODO: write nonlinear optimizer initialization time to *.csv
+                proc_time = time.time() - tt
                 logging.info(
-                    "%s initialization takes %g seconds"
-                    % (optimizer_name, (time.time() - tt))
+                    "%s initialization takes %g seconds" % (optimizer_name, proc_time)
+                )
+                logging.info(
+                    f"Process: {optimizer_name} initialization takes {proc_time:.2f} seconds"
                 )
 
                 # as nesterov requires line search, we cannot follow the convention of other solvers
@@ -419,6 +423,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             0
                         ].data.clone()
 
+                    # TODO: record initial solution's objective and overflow to *.csv
                     # actually reports the metric before step
                     logging.info(cur_metric)
                     # record the best outer cell overflow
@@ -836,10 +841,15 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 # ):
                 #     all_metrics.append([best_metric])
 
+                # TODO: write nonlinear optimizer runtime to *.csv
+                # TODO: record incumbent solution's objective and overflow to *.csv
+                proc_time = time.time() - tt
                 logging.info(
-                    "optimizer %s takes %.3f seconds"
-                    % (optimizer_name, time.time() - tt)
+                    "optimizer %s takes %.3f seconds" % (optimizer_name, proc_time)
                 )
+                logging.info(f"Process: Global placement takes {proc_time:.2f} seconds")
+                w_hpwl = best_metric[0].hpwl
+                logging.info(f"Process: Global placement has wHPWL of {w_hpwl}")
 
             # recover node size and pin offset for legalization, since node size is adjusted in global placement
             if params.routability_opt_flag:
@@ -908,12 +918,18 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         if params.legalize_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.legalize_op(self.pos[0]))
-            logging.info("legalization takes %.3f seconds" % (time.time() - tt))
+            # TODO: write nonlinear optimizer runtime to *.csv
+            # TODO: record incumbent solution's objective and overflow to *.csv
+            proc_time = time.time() - tt
+            logging.info("legalization takes %.3f seconds" % proc_time)
+            logging.info(f"Process: Global placement takes {proc_time:.2f} seconds")
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
                 placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
             )
+            w_hpwl = cur_metric.hpwl
+            logging.info(f"Process: Legalization has wHPWL of {w_hpwl}")
 
             # perform an additional timing analysis on the legalized solution.
             # sta after legalization is not needed anymore.
@@ -958,13 +974,19 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         if params.detailed_place_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.detailed_place_op(self.pos[0]))
-            logging.info("detailed placement takes %.3f seconds" % (time.time() - tt))
+            # TODO: write nonlinear optimizer runtime to *.csv
+            # TODO: record incumbent solution's objective and overflow to *.csv
+            proc_time = time.time() - tt
+            logging.info("detailed placement takes %.3f seconds" % proc_time)
+            logging.info(f"Process: Detailed placement takes {proc_time:.2f} seconds")
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
                 placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
             )
             logging.info(cur_metric)
+            w_hpwl = cur_metric.hpwl
+            logging.info(f"Process: Detailed placement has wHPWL of {w_hpwl}")
             iteration += 1
 
         # save results

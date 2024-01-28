@@ -41,7 +41,10 @@ def place(params):
     tt = time.time()
     placedb = PlaceDB.PlaceDB()
     placedb(params)
-    logging.info("reading database takes %.2f seconds" % (time.time() - tt))
+    # TODO: write input time to *.csv
+    proc_time = time.time() - tt
+    logging.info("reading database takes %.2f seconds" % (proc_time))
+    logging.info(f"Process: Input takes {proc_time:.2f} sec")
 
     # Read timing constraints provided in the benchmarks into out timing analysis
     # engine and then pass the timer into the placement core.

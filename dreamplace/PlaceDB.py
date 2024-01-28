@@ -1246,9 +1246,10 @@ row height = %g, site width = %g
             place_io.PlaceIOFunction.write(
                 self.rawdb, filename, sol_file_format, node_x, node_y
             )
-        logging.info(
-            "write %s takes %.3f seconds" % (str(sol_file_format), time.time() - tt)
-        )
+        # TODO: write input time to *.csv
+        proc_time = time.time() - tt
+        logging.info("write %s takes %.3f seconds" % (str(sol_file_format), proc_time))
+        logging.info(f"Process: Output takes {proc_time:.2f} sec")
 
     def read_pl(self, params, pl_file):
         """

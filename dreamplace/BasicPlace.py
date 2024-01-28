@@ -162,7 +162,7 @@ class PlaceDataCollection(object):
             ).to(device)
             if len(placedb.regions) > 0:
                 # This is for multi-electric potential and legalization
-                # boxes defined as left-bottm point and top-right point
+                # boxes defined as left-bottom point and top-right point
                 self.virtual_macro_fence_region = [
                     torch.from_numpy(region).to(device)
                     for region in placedb.virtual_macro_fence_region
@@ -416,8 +416,10 @@ class BasicPlace(nn.Module):
                     size=placedb.num_filler_nodes,
                 )
 
-        logging.debug("prepare init_pos takes %.2f seconds" % (time.time() - tt))
+        init_pos_time = time.time() - tt
+        logging.debug("prepare init_pos takes %.2f seconds" % init_pos_time)
 
+        post_init_pos = time.time()
         self.device = torch.device("cuda" if params.gpu else "cpu")
 
         # position should be parameter
@@ -490,6 +492,16 @@ class BasicPlace(nn.Module):
         self.read_lut_flag = True
 
         logging.debug("build BasicPlace ops takes %.2f seconds" % (time.time() - tt))
+        # TODO: record initial solution's objective and overflow to *.csv
+        w_hpwl = self.op_collections.hpwl_op
+        logging.info(
+            f"Process: Initial placement took {init_pos_time} for init. positioning"
+        )
+        logging.info(f"Process: Initial placement has wHPWL of {w_hpwl}")
+        post_init_pos_time = time.time() - post_init_pos
+        logging.info(
+            f"Process: Initial placement took {post_init_pos_time} for post-init. pos."
+        )
 
     def __call__(self, params, placedb):
         """
