@@ -101,6 +101,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 if cur_metric.overflow is not None:
                     overflow = cur_metric.overflow[-1]
                     _str += f" & overflow of {overflow}"
+                logging.info(_str)
 
                 # determine optimizer
                 if optimizer_name.lower() == "adam":
