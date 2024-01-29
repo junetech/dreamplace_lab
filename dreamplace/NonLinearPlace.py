@@ -162,7 +162,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     "%s initialization takes %g seconds" % (optimizer_name, proc_time)
                 )
                 logging.info(
-                    f"Process: {optimizer_name} initialization takes {proc_time:.2f} seconds"
+                    f"Process: {optimizer_name} initialization takes {proc_time:.3f} seconds"
                 )
 
                 # as nesterov requires line search, we cannot follow the convention of other solvers
@@ -847,9 +847,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 logging.info(
                     "optimizer %s takes %.3f seconds" % (optimizer_name, proc_time)
                 )
-                logging.info(f"Process: Global placement takes {proc_time:.2f} seconds")
                 w_hpwl = best_metric[0].hpwl
-                logging.info(f"Process: Global placement has wHPWL of {w_hpwl}")
+                overflow = best_metric[0].overflow[-1]
+                logging.info(f"Process: Global placement takes {proc_time:.3f} seconds")
+                _str = f"Process: Global placement has wHPWL of {w_hpwl}"
+                _str += f" & overflow of {overflow}"
+                logging.info(_str)
 
             # recover node size and pin offset for legalization, since node size is adjusted in global placement
             if params.routability_opt_flag:
@@ -922,13 +925,13 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             # TODO: record incumbent solution's objective and overflow to *.csv
             proc_time = time.time() - tt
             logging.info("legalization takes %.3f seconds" % proc_time)
-            logging.info(f"Process: Global placement takes {proc_time:.2f} seconds")
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
                 placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
             )
             w_hpwl = cur_metric.hpwl
+            logging.info(f"Process: Legalization takes {proc_time:.3f} seconds")
             logging.info(f"Process: Legalization has wHPWL of {w_hpwl}")
 
             # perform an additional timing analysis on the legalized solution.
@@ -978,7 +981,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             # TODO: record incumbent solution's objective and overflow to *.csv
             proc_time = time.time() - tt
             logging.info("detailed placement takes %.3f seconds" % proc_time)
-            logging.info(f"Process: Detailed placement takes {proc_time:.2f} seconds")
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
@@ -986,6 +988,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             )
             logging.info(cur_metric)
             w_hpwl = cur_metric.hpwl
+            logging.info(f"Process: Detailed placement takes {proc_time:.3f} seconds")
             logging.info(f"Process: Detailed placement has wHPWL of {w_hpwl}")
             iteration += 1
 

@@ -1249,7 +1249,7 @@ row height = %g, site width = %g
         # TODO: write input time to *.csv
         proc_time = time.time() - tt
         logging.info("write %s takes %.3f seconds" % (str(sol_file_format), proc_time))
-        logging.info(f"Process: Output takes {proc_time:.2f} sec")
+        logging.info(f"Process: Output takes {proc_time:.3f} sec")
 
     def read_pl(self, params, pl_file):
         """

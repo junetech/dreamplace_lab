@@ -44,7 +44,7 @@ def place(params):
     # TODO: write input time to *.csv
     proc_time = time.time() - tt
     logging.info("reading database takes %.2f seconds" % (proc_time))
-    logging.info(f"Process: Input takes {proc_time:.2f} sec")
+    logging.info(f"Process: Input takes {proc_time:.3f} sec")
 
     # Read timing constraints provided in the benchmarks into out timing analysis
     # engine and then pass the timer into the placement core.
@@ -184,13 +184,15 @@ if __name__ == "__main__":
     """
     @brief main function to invoke the entire placement flow.
     """
+    params = Params.Params()
     logging.root.name = "DREAMPlace"
     logging.basicConfig(
         level=logging.INFO,
         format="[%(levelname)-7s] %(name)s - %(message)s",
         stream=sys.stdout,
+        filename=params.log_filename,
+        encoding="utf-8",
     )
-    params = Params.Params()
     params.printWelcome()
     if len(sys.argv) == 1 or "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         params.printHelp()

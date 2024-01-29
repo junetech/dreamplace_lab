@@ -493,14 +493,15 @@ class BasicPlace(nn.Module):
 
         logging.debug("build BasicPlace ops takes %.2f seconds" % (time.time() - tt))
         # TODO: record initial solution's objective and overflow to *.csv
+        # TODO: w_hpwl is <function BasicPlace.build_hpwl.<locals>.build_wirelength_op at 0x7f5ade0a5a60>
         w_hpwl = self.op_collections.hpwl_op
         logging.info(
-            f"Process: Initial placement took {init_pos_time} for init. positioning"
+            f"Process: Initial placement took {init_pos_time:.3f} for init. positioning"
         )
         logging.info(f"Process: Initial placement has wHPWL of {w_hpwl}")
         post_init_pos_time = time.time() - post_init_pos
         logging.info(
-            f"Process: Initial placement took {post_init_pos_time} for post-init. pos."
+            f"Process: Initial placement took {post_init_pos_time:.3f} for post-init. pos."
         )
 
     def __call__(self, params, placedb):

@@ -287,5 +287,9 @@
         "description": "maximum net weight in timing opt (negative for infinity)",
         "default": "inf",
         "required": "required for timing-driven mode"
+    },
+    "log_filename": {
+        "description": "Filename of info-level log",
+        "default": "dreamplace_lab.log"
     }
 }
