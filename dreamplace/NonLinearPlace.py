@@ -899,7 +899,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
-                placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
+                placedb,
+                {
+                    "hpwl": self.op_collections.hpwl_op,
+                    "overflow": self.op_collections.density_overflow_op,
+                },
+                self.pos[0],
             )
             logging.info(cur_metric)
 
@@ -929,7 +934,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
-                placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
+                placedb,
+                {
+                    "hpwl": self.op_collections.hpwl_op,
+                    "overflow": self.op_collections.density_overflow_op,
+                },
+                self.pos[0],
             )
             logging.info(f"Process: Legalization takes {proc_time:.3f} sec")
             w_hpwl = cur_metric.hpwl
@@ -989,7 +999,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
-                placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
+                placedb,
+                {
+                    "hpwl": self.op_collections.hpwl_op,
+                    "overflow": self.op_collections.density_overflow_op,
+                },
+                self.pos[0],
             )
             logging.info(cur_metric)
             logging.info(f"Process: Detailed placement takes {proc_time:.3f} sec")

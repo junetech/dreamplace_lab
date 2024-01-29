@@ -499,7 +499,14 @@ class BasicPlace(nn.Module):
             f"Process: Initial placement took {init_pos_time:.3f} sec for init. positioning"
         )
         cur_metric = EvalMetrics.EvalMetrics()
-        cur_metric.evaluate(placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0])
+        cur_metric.evaluate(
+            placedb,
+            {
+                "hpwl": self.op_collections.hpwl_op,
+                "overflow": self.op_collections.density_overflow_op,
+            },
+            self.pos[0],
+        )
         w_hpwl = cur_metric.hpwl
         _str = f"Process: Initial placement has wHPWL of {w_hpwl}"
         if cur_metric.overflow is not None:
