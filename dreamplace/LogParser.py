@@ -3,7 +3,7 @@ import datetime
 import logging
 import re
 import sys
-from typing import Any
+from typing import Any, Dict, List
 
 START_DT: datetime.datetime
 
@@ -13,7 +13,7 @@ TIME_PATTERN = r"^\[INFO\]root-Process:(.*)takes(\d+\.\d+)sec$"
 OBJ_PATTERN = r"^\[INFO\]root-Process:(.*)haswHPWLof(\d+\.\d+)&overflowof(\d+\.\d+)"
 
 
-def parse_a_line(a_line: str) -> dict[str, dict[str, Any]]:
+def parse_a_line(a_line: str) -> Dict[str, Dict[str, Any]]:
     parsed_dict = {}
     key_str = ""
 
@@ -23,10 +23,10 @@ def parse_a_line(a_line: str) -> dict[str, dict[str, Any]]:
     if mo:
         key_str = "Input"
         params_dict = ast.literal_eval(mo.group(1))
-        if params_dict["aux_input"]:
+        if params_dict["def_input"]:
+            input_path = params_dict["def_input"]
+        elif params_dict["aux_input"]:
             input_path = params_dict["aux_input"]
-        elif params_dict["lef_input"]:
-            input_path = params_dict["lef_input"]
         parsed_dict[key_str] = {"path": input_path}
     else:
         time_regex = re.compile(TIME_PATTERN)
@@ -45,9 +45,9 @@ def parse_a_line(a_line: str) -> dict[str, dict[str, Any]]:
 
 
 def parse():
-    ins_count: dict[str, int] = {}
-    ins_list: list[str] = []
-    ins_proc_dict: dict[str, dict[str, float]] = {}
+    ins_count: Dict[str, int] = {}
+    ins_list: List[str] = []
+    ins_proc_dict: Dict[str, dict[str, float]] = {}
 
     with open(PLACER_LOG_FILENAME) as p_log:
         ins_key: str = ""
