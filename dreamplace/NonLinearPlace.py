@@ -161,9 +161,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 logging.info(
                     "%s initialization takes %g seconds" % (optimizer_name, proc_time)
                 )
-                logging.info(
-                    f"Process: {optimizer_name} initialization takes {proc_time:.3f} seconds"
-                )
+                # logging.info(
+                #     f"Process: {optimizer_name} initialization takes {proc_time:.3f} sec."
+                # )
 
                 # as nesterov requires line search, we cannot follow the convention of other solvers
                 if optimizer_name.lower() in {
@@ -930,9 +930,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric.evaluate(
                 placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
             )
-            w_hpwl = cur_metric.hpwl
             logging.info(f"Process: Legalization takes {proc_time:.3f} seconds")
-            logging.info(f"Process: Legalization has wHPWL of {w_hpwl}")
+            w_hpwl, overflow = cur_metric.hpwl, cur_metric.overflow[-1]
+            _str = f"Process: Legalization has wHPWL of {w_hpwl}"
+            _str += f" & overflow of {overflow}"
+            logging.info(_str)
 
             # perform an additional timing analysis on the legalized solution.
             # sta after legalization is not needed anymore.
@@ -989,7 +991,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             logging.info(cur_metric)
             w_hpwl = cur_metric.hpwl
             logging.info(f"Process: Detailed placement takes {proc_time:.3f} seconds")
-            logging.info(f"Process: Detailed placement has wHPWL of {w_hpwl}")
+            w_hpwl, overflow = cur_metric.hpwl, cur_metric.overflow[-1]
+            _str = f"Process: Detailed placement has wHPWL of {w_hpwl}"
+            _str += f" & overflow of {overflow}"
+            logging.info(_str)
             iteration += 1
 
         # save results
