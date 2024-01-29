@@ -172,14 +172,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
 
                 if params.gpu:
                     torch.cuda.synchronize()
-                # TODO: write nonlinear optimizer initialization time to *.csv
-                proc_time = time.time() - tt
                 logging.info(
-                    "%s initialization takes %g seconds" % (optimizer_name, proc_time)
+                    "%s initialization takes %g seconds"
+                    % (optimizer_name, (time.time() - tt))
                 )
-                # logging.info(
-                #     f"Process: {optimizer_name} initialization takes {proc_time:.3f} sec."
-                # )
 
                 # as nesterov requires line search, we cannot follow the convention of other solvers
                 if optimizer_name.lower() in {
@@ -439,7 +435,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             0
                         ].data.clone()
 
-                    # TODO: record initial solution's objective and overflow to *.csv
                     # actually reports the metric before step
                     logging.info(cur_metric)
                     # record the best outer cell overflow
@@ -857,8 +852,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 # ):
                 #     all_metrics.append([best_metric])
 
-                # TODO: write nonlinear optimizer runtime to *.csv
-                # TODO: record incumbent solution's objective and overflow to *.csv
                 proc_time = time.time() - tt
                 logging.info(
                     "optimizer %s takes %.3f seconds" % (optimizer_name, proc_time)
@@ -943,8 +936,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         if params.legalize_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.legalize_op(self.pos[0]))
-            # TODO: write nonlinear optimizer runtime to *.csv
-            # TODO: record incumbent solution's objective and overflow to *.csv
             proc_time = time.time() - tt
             logging.info("legalization takes %.3f seconds" % proc_time)
             cur_metric = EvalMetrics.EvalMetrics(iteration)
@@ -1008,8 +999,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         if params.detailed_place_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.detailed_place_op(self.pos[0]))
-            # TODO: write nonlinear optimizer runtime to *.csv
-            # TODO: record incumbent solution's objective and overflow to *.csv
             proc_time = time.time() - tt
             logging.info("detailed placement takes %.3f seconds" % proc_time)
             cur_metric = EvalMetrics.EvalMetrics(iteration)

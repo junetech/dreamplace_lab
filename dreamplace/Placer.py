@@ -42,7 +42,6 @@ def place(params):
     tt = time.time()
     placedb = PlaceDB.PlaceDB()
     placedb(params)
-    # TODO: write input time to *.csv
     proc_time = time.time() - tt
     logging.info("reading database takes %.2f seconds" % (proc_time))
     logging.info(f"Process: Input takes {proc_time:.3f} sec")

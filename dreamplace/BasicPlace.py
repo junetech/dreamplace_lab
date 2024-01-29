@@ -494,7 +494,6 @@ class BasicPlace(nn.Module):
 
         logging.debug("build BasicPlace ops takes %.2f seconds" % (time.time() - tt))
 
-        # TODO: record initial solution's objective and overflow to *.csv
         logging.info(
             f"Process: Initial placement took {init_pos_time:.3f} sec for init. positioning"
         )
