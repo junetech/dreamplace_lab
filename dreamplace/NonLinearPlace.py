@@ -86,6 +86,22 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 ).to(self.data_collections.pos[0].device)
                 optimizer_name = global_place_params["optimizer"]
 
+                # Initial solution's quality
+                cur_metric = EvalMetrics.EvalMetrics(iteration)
+                cur_metric.evaluate(
+                    placedb,
+                    {
+                        "hpwl": self.op_collections.hpwl_op,
+                        "overflow": self.op_collections.density_overflow_op,
+                    },
+                    self.pos[0],
+                )
+                w_hpwl = cur_metric.hpwl
+                _str = f"Process: Initial placement has wHPWL of {w_hpwl}"
+                if cur_metric.overflow is not None:
+                    overflow = cur_metric.overflow[-1]
+                    _str += f" & overflow of {overflow}"
+
                 # determine optimizer
                 if optimizer_name.lower() == "adam":
                     optimizer = torch.optim.Adam(self.parameters(), lr=0)

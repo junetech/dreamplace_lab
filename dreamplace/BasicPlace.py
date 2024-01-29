@@ -501,10 +501,7 @@ class BasicPlace(nn.Module):
         cur_metric = EvalMetrics.EvalMetrics()
         cur_metric.evaluate(
             placedb,
-            {
-                "hpwl": self.op_collections.hpwl_op,
-                "overflow": self.op_collections.density_overflow_op,
-            },
+            {"hpwl": self.op_collections.hpwl_op},
             self.pos[0],
         )
         w_hpwl = cur_metric.hpwl
