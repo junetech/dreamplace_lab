@@ -185,17 +185,17 @@ if __name__ == "__main__":
     params = Params.Params()
 
     # Log config
-    module_logger = logging.getLogger(__name__)
-    module_logger.setLevel(logging.INFO)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
     log_format = logging.Formatter("[%(levelname)-7s] %(name)s - %(message)s")
     # Logging to a .log file
     f_handler = logging.FileHandler(params.log_filename, encoding="utf-8")
     f_handler.setFormatter(log_format)
-    module_logger.addHandler(f_handler)
+    root_logger.addHandler(f_handler)
     # Show log messages on terminal as well
     s_handler = logging.StreamHandler(sys.stdout)
     s_handler.setFormatter(log_format)
-    module_logger.addHandler(s_handler)
+    root_logger.addHandler(s_handler)
 
     params.printWelcome()
     if len(sys.argv) == 1 or "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
