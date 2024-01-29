@@ -5,8 +5,9 @@
 # @brief  The timer required in the timing-driven mode
 #
 
-import time
 import logging
+import time
+
 import dreamplace.ops.timing.timing as timing
 import dreamplace.ops.timing.timing_cpp as timing_cpp
 

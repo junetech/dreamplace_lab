@@ -5,28 +5,27 @@
 # @brief  Nonlinear placement engine to be called with parameters and placement database
 #
 
+import copy
+import inspect
+import logging
 import os
+import pickle
 import sys
 import time
-import pickle
-import numpy as np
-import logging
-import torch
-import gzip
-import copy
+
 import matplotlib.pyplot as plt
-import inspect
+import numpy as np
+import torch
 
 if sys.version_info[0] < 3:
     import cPickle as pickle
 else:
     import _pickle as pickle
+
 import BasicPlace
-import PlaceObj
-import NesterovAcceleratedGradientOptimizer
 import EvalMetrics
-import pdb
-import dreamplace.ops.fence_region.fence_region as fence_region
+import NesterovAcceleratedGradientOptimizer
+import PlaceObj
 
 
 class NonLinearPlace(BasicPlace.BasicPlace):

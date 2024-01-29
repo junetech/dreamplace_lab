@@ -7,16 +7,11 @@
 
 import os
 import sys
-import time
 import numpy as np
-import itertools
 import logging
 import torch
-import torch.autograd as autograd
 import torch.nn as nn
-import torch.nn.functional as F
 import pdb
-import gzip
 
 if sys.version_info[0] < 3:
     import cPickle as pickle

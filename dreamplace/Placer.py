@@ -8,22 +8,23 @@
 import matplotlib
 
 matplotlib.use("Agg")
+import logging
 import os
 import sys
 import time
+
 import numpy as np
-import logging
 
 # for consistency between python2 and python3
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
     sys.path.append(root_dir)
+
 import dreamplace.configure as configure
+import NonLinearPlace
 import Params
 import PlaceDB
 import Timer
-import NonLinearPlace
-import pdb
 
 
 def place(params):

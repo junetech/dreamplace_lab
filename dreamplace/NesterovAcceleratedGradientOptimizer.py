@@ -5,15 +5,8 @@
 # @brief  Nesterov's accelerated gradient method proposed by e-place.
 #
 
-import os
-import sys
-import time
-import pickle
-import numpy as np
 import torch
 from torch.optim.optimizer import Optimizer, required
-import torch.nn as nn
-import pdb
 
 
 class NesterovAcceleratedGradientOptimizer(Optimizer):

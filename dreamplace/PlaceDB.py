@@ -5,19 +5,20 @@
 # @brief  placement database
 #
 
-import sys
+import logging
+import math
 import os
 import re
-import math
+import sys
 import time
+
 import numpy as np
 import torch
-import logging
-import Params
+
 import dreamplace
-import dreamplace.ops.place_io.place_io as place_io
 import dreamplace.ops.fence_region.fence_region as fence_region
-import pdb
+import dreamplace.ops.place_io.place_io as place_io
+import Params
 
 datatypes = {"float32": np.float32, "float64": np.float64}
 

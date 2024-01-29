@@ -5,12 +5,10 @@
 # @brief  User parameters
 #
 
+import json
 import os
 import sys
-import json
-import math
 from collections import OrderedDict
-import pdb
 
 
 class Params:

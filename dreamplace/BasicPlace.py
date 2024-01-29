@@ -5,37 +5,37 @@
 # @brief  Base placement class
 #
 
+import gzip
 import os
 import sys
 import time
-import gzip
 
 if sys.version_info[0] < 3:
     import cPickle as pickle
 else:
     import _pickle as pickle
-import re
-import numpy as np
+
 import logging
+
+import numpy as np
 import torch
 import torch.nn as nn
-import EvalMetrics
-import dreamplace.ops.move_boundary.move_boundary as move_boundary
+
+import dreamplace.ops.abacus_legalize.abacus_legalize as abacus_legalize
+import dreamplace.ops.draw_place.draw_place as draw_place
+import dreamplace.ops.global_swap.global_swap as global_swap
+import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize
 import dreamplace.ops.hpwl.hpwl as hpwl
+import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
+import dreamplace.ops.k_reorder.k_reorder as k_reorder
+import dreamplace.ops.legality_check.legality_check as legality_check
 
 # import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
 import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize
-import dreamplace.ops.greedy_legalize.greedy_legalize as greedy_legalize
-import dreamplace.ops.abacus_legalize.abacus_legalize as abacus_legalize
-import dreamplace.ops.legality_check.legality_check as legality_check
-import dreamplace.ops.draw_place.draw_place as draw_place
+import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
-import dreamplace.ops.global_swap.global_swap as global_swap
-import dreamplace.ops.k_reorder.k_reorder as k_reorder
-import dreamplace.ops.independent_set_matching.independent_set_matching as independent_set_matching
 import dreamplace.ops.pin_weight_sum.pin_weight_sum as pws
 import dreamplace.ops.timing.timing as timing
-import pdb
 
 
 class PlaceDataCollection(object):
