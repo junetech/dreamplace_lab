@@ -496,13 +496,15 @@ class BasicPlace(nn.Module):
         # TODO: record initial solution's objective and overflow to *.csv
         # TODO: w_hpwl is <function BasicPlace.build_hpwl.<locals>.build_wirelength_op at 0x7f5ade0a5a60>
         logging.info(
-            f"Process: Initial placement took {init_pos_time:.3f} for init. positioning"
+            f"Process: Initial placement took {init_pos_time:.3f} sec for init. positioning"
         )
         cur_metric = EvalMetrics.EvalMetrics()
         cur_metric.evaluate(placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0])
-        w_hpwl, overflow = cur_metric.hpwl, cur_metric.overflow[-1]
+        w_hpwl = cur_metric.hpwl
         _str = f"Process: Initial placement has wHPWL of {w_hpwl}"
-        _str += f" & overflow of {overflow}"
+        if cur_metric.overflow is not None:
+            overflow = cur_metric.overflow[-1]
+            _str += f" & overflow of {overflow}"
         logging.info(_str)
         post_init_pos_time = time.time() - post_init_pos
         logging.info(

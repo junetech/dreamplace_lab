@@ -847,11 +847,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 logging.info(
                     "optimizer %s takes %.3f seconds" % (optimizer_name, proc_time)
                 )
+                logging.info(f"Process: Global placement takes {proc_time:.3f} sec")
                 w_hpwl = best_metric[0].hpwl
-                overflow = best_metric[0].overflow[-1]
-                logging.info(f"Process: Global placement takes {proc_time:.3f} seconds")
                 _str = f"Process: Global placement has wHPWL of {w_hpwl}"
-                _str += f" & overflow of {overflow}"
+                if best_metric[0].overflow is not None:
+                    overflow = best_metric[0].overflow[-1]
+                    _str += f" & overflow of {overflow}"
                 logging.info(_str)
 
             # recover node size and pin offset for legalization, since node size is adjusted in global placement
@@ -930,10 +931,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric.evaluate(
                 placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
             )
-            logging.info(f"Process: Legalization takes {proc_time:.3f} seconds")
-            w_hpwl, overflow = cur_metric.hpwl, cur_metric.overflow[-1]
+            logging.info(f"Process: Legalization takes {proc_time:.3f} sec")
+            w_hpwl = cur_metric.hpwl
             _str = f"Process: Legalization has wHPWL of {w_hpwl}"
-            _str += f" & overflow of {overflow}"
+            if cur_metric.overflow is not None:
+                overflow = cur_metric.overflow[-1]
+                _str += f" & overflow of {overflow}"
             logging.info(_str)
 
             # perform an additional timing analysis on the legalized solution.
@@ -989,11 +992,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
             )
             logging.info(cur_metric)
+            logging.info(f"Process: Detailed placement takes {proc_time:.3f} sec")
             w_hpwl = cur_metric.hpwl
-            logging.info(f"Process: Detailed placement takes {proc_time:.3f} seconds")
-            w_hpwl, overflow = cur_metric.hpwl, cur_metric.overflow[-1]
             _str = f"Process: Detailed placement has wHPWL of {w_hpwl}"
-            _str += f" & overflow of {overflow}"
+            if cur_metric.overflow is not None:
+                overflow = cur_metric.overflow[-1]
+                _str += f" & overflow of {overflow}"
             logging.info(_str)
             iteration += 1
 
