@@ -119,6 +119,82 @@ class PlaceDB(object):
         self.max_net_weight = None  # maximum net weight in timing opt
         self.dtype = None
 
+    def scale_pl(self, shift_factor, scale_factor):
+        """
+        @brief scale placement solution only
+        @param shift_factor shift factor to make the origin of the layout to (0, 0)
+        @param scale_factor scale factor
+        """
+        self.node_x -= shift_factor[0]
+        self.node_x *= scale_factor
+        self.node_y -= shift_factor[1]
+        self.node_y *= scale_factor
+
+    def unscale_pl(self, shift_factor, scale_factor):
+        """
+        @brief unscale placement solution only
+        @param shift_factor shift factor to make the origin of the layout to (0, 0)
+        @param scale_factor scale factor
+        """
+        unscale_factor = 1.0 / scale_factor
+        if shift_factor[0] == 0 and shift_factor[1] == 0 and unscale_factor == 1.0:
+            node_x = self.node_x
+            node_y = self.node_y
+        else:
+            node_x = self.node_x * unscale_factor + shift_factor[0]
+            node_y = self.node_y * unscale_factor + shift_factor[1]
+
+        return node_x, node_y
+
+    def scale(self, shift_factor, scale_factor):
+        """
+        @brief shift and scale coordinates
+        @param shift_factor shift factor to make the origin of the layout to (0, 0)
+        @param scale_factor scale factor
+        """
+        logging.info(
+            "shift coordinate system by (%g, %g), scale coordinate system by %g"
+            % (shift_factor[0], shift_factor[1], scale_factor)
+        )
+        self.scale_pl(shift_factor, scale_factor)
+        self.node_size_x *= scale_factor
+        self.node_size_y *= scale_factor
+        self.pin_offset_x *= scale_factor
+        self.pin_offset_y *= scale_factor
+        self.xl -= shift_factor[0]
+        self.xl *= scale_factor
+        self.yl -= shift_factor[1]
+        self.yl *= scale_factor
+        self.xh -= shift_factor[0]
+        self.xh *= scale_factor
+        self.yh -= shift_factor[1]
+        self.yh *= scale_factor
+        self.routing_grid_xl -= shift_factor[0]
+        self.routing_grid_xl *= scale_factor
+        self.routing_grid_yl -= shift_factor[1]
+        self.routing_grid_yl *= scale_factor
+        self.routing_grid_xh -= shift_factor[0]
+        self.routing_grid_xh *= scale_factor
+        self.routing_grid_yh -= shift_factor[1]
+        self.routing_grid_yh *= scale_factor
+        self.row_height *= scale_factor
+        self.site_width *= scale_factor
+
+        # shift factor for rectangle
+        box_shift_factor = np.array([shift_factor, shift_factor]).reshape(1, -1)
+        self.rows -= box_shift_factor
+        self.rows *= scale_factor
+        self.total_space_area *= scale_factor * scale_factor  # this is area
+
+        if len(self.flat_region_boxes):
+            self.flat_region_boxes -= box_shift_factor
+            self.flat_region_boxes *= scale_factor
+        # may have performance issue
+        # I assume there are not many boxes
+        for i in range(len(self.regions)):
+            self.regions[i] -= box_shift_factor
+            self.regions[i] *= scale_factor
+
     def sort(self):
         """
         @brief Sort net by degree.
@@ -431,18 +507,6 @@ class PlaceDB(object):
         """
         logging.debug("row %d %s" % (row_id, self.rows[row_id]))
 
-    def __call__(self, params: Params):
-        """
-        @brief top API to read placement files
-        @param params parameters
-        """
-        tt = time.time()
-
-        self.read(params)
-        self.initialize(params)
-
-        logging.info("reading benchmark takes %g seconds" % (time.time() - tt))
-
     def read(self, params: Params):
         """
         @brief read using c++
@@ -638,6 +702,113 @@ class PlaceDB(object):
             self.num_bins_x = params.num_bins_x
             self.num_bins_y = params.num_bins_y
 
+    def __call__(self, params: Params):
+        """
+        @brief top API to read placement files
+        @param params parameters
+        """
+        tt = time.time()
+
+        self.read(params)
+        self.initialize(params)
+
+        logging.info("reading benchmark takes %g seconds" % (time.time() - tt))
+
+    def calc_num_filler_for_fence_region(
+        self, region_id, node2fence_region_map, target_density
+    ):
+        """
+        @description: calculate number of fillers for each fence region
+        @param fence_regions{type}
+        @return:
+        """
+        num_regions = len(self.regions)
+        node2fence_region_map = node2fence_region_map[: self.num_movable_nodes]
+        if region_id < len(self.regions):
+            fence_region_mask = node2fence_region_map == region_id
+        else:
+            fence_region_mask = node2fence_region_map >= len(self.regions)
+
+        num_movable_nodes = self.num_movable_nodes
+
+        movable_node_size_x = self.node_size_x[:num_movable_nodes][fence_region_mask]
+        # movable_node_size_y = self.node_size_y[:num_movable_nodes][fence_region_mask]
+
+        lower_bound = np.percentile(movable_node_size_x, 5)
+        upper_bound = np.percentile(movable_node_size_x, 95)
+        filler_size_x = np.mean(
+            movable_node_size_x[
+                (movable_node_size_x >= lower_bound)
+                & (movable_node_size_x <= upper_bound)
+            ]
+        )
+        filler_size_y = self.row_height
+
+        area = (self.xh - self.xl) * (self.yh - self.yl)
+
+        total_movable_node_area = np.sum(
+            self.node_size_x[:num_movable_nodes][fence_region_mask]
+            * self.node_size_y[:num_movable_nodes][fence_region_mask]
+        )
+
+        if region_id < num_regions:
+            ## placeable area is not just fention region area. Macros can have overlap with fence region. But we approximate by this method temporarily
+            region = self.regions[region_id]
+            placeable_area = np.sum(
+                (region[:, 2] - region[:, 0]) * (region[:, 3] - region[:, 1])
+            )
+        else:
+            ### invalid area outside the region, excluding macros? ignore overlap between fence region and macro
+            fence_regions = np.concatenate(self.regions, 0).astype(np.float32)
+            fence_regions_size_x = fence_regions[:, 2] - fence_regions[:, 0]
+            fence_regions_size_y = fence_regions[:, 3] - fence_regions[:, 1]
+            fence_region_area = np.sum(fence_regions_size_x * fence_regions_size_y)
+
+            placeable_area = (
+                max(self.total_space_area, self.area - self.total_fixed_node_area)
+                - fence_region_area
+            )
+
+        ### recompute target density based on the region utilization
+        utilization = min(total_movable_node_area / placeable_area, 1.0)
+        if target_density < utilization:
+            ### add a few fillers to avoid divergence
+            target_density_fence_region = min(1, utilization + 0.01)
+        else:
+            target_density_fence_region = target_density
+
+        target_density_fence_region = max(0.35, target_density_fence_region)
+
+        total_filler_node_area = max(
+            placeable_area * target_density_fence_region - total_movable_node_area, 0.0
+        )
+
+        num_filler = int(
+            round(total_filler_node_area / (filler_size_x * filler_size_y))
+        )
+        logging.info(
+            "Region:%2d movable_node_area =%10.1f, placeable_area =%10.1f, utilization =%.3f, filler_node_area =%10.1f, #fillers =%8d, filler sizes =%2.4gx%g\n"
+            % (
+                region_id,
+                total_movable_node_area,
+                placeable_area,
+                utilization,
+                total_filler_node_area,
+                num_filler,
+                filler_size_x,
+                filler_size_y,
+            )
+        )
+
+        return (
+            num_filler,
+            target_density_fence_region,
+            filler_size_x,
+            filler_size_y,
+            total_movable_node_area,
+            np.sum(fence_region_mask.astype(np.float32)),
+        )
+
     def initialize(self, params: Params):
         """
         @brief initialize data members after reading
@@ -668,11 +839,11 @@ class PlaceDB(object):
         self.scale(params.shift_factor, params.scale_factor)
 
         content = """
-    =============================== Benchmark Statistics ===============================
-    #nodes = %d, #terminals = %d, # terminal_NIs = %d, #movable = %d, #nets = %d
-    die area = (%g, %g, %g, %g) %g
-    row height = %g, site width = %g
-    """ % (
+=============================== Benchmark Statistics ===============================
+#nodes = %d, #terminals = %d, # terminal_NIs = %d, #movable = %d, #nets = %d
+die area = (%g, %g, %g, %g) %g
+row height = %g, site width = %g
+""" % (
             self.num_physical_nodes,
             self.num_terminals,
             self.num_terminal_NIs,
@@ -999,7 +1170,7 @@ class PlaceDB(object):
         )
 
         if params.routability_opt_flag:
-            content += "================================== routing information =================================\n"
+            content += "=" * 33 + " routing information " + "=" * 34 + "\n"
             content += "routing grids (%d, %d)\n" % (
                 self.num_routing_grids_x,
                 self.num_routing_grids_y,
@@ -1012,82 +1183,157 @@ class PlaceDB(object):
                 self.unit_horizontal_capacity * self.routing_grid_size_y,
                 self.unit_vertical_capacity * self.routing_grid_size_x,
             )
-        content += "========================================================================================"
+        content += "=" * 88
 
         logging.info(content)
 
-    def scale_pl(self, shift_factor, scale_factor):
+    def write(self, params, filename, sol_file_format=None):
         """
-        @brief scale placement solution only
-        @param shift_factor shift factor to make the origin of the layout to (0, 0)
-        @param scale_factor scale factor
+        @brief write placement solution
+        @param filename output file name
+        @param sol_file_format solution file format, DEF|DEFSIMPLE|BOOKSHELF|BOOKSHELFALL
         """
-        self.node_x -= shift_factor[0]
-        self.node_x *= scale_factor
-        self.node_y -= shift_factor[1]
-        self.node_y *= scale_factor
+        tt = time.time()
+        logging.info("writing to %s" % (filename))
+        if sol_file_format is None:
+            if filename.endswith(".def"):
+                sol_file_format = place_io.SolutionFileFormat.DEF
+            else:
+                sol_file_format = place_io.SolutionFileFormat.BOOKSHELF
 
-    def unscale_pl(self, shift_factor, scale_factor):
-        """
-        @brief unscale placement solution only
-        @param shift_factor shift factor to make the origin of the layout to (0, 0)
-        @param scale_factor scale factor
-        """
-        unscale_factor = 1.0 / scale_factor
-        if shift_factor[0] == 0 and shift_factor[1] == 0 and unscale_factor == 1.0:
-            node_x = self.node_x
-            node_y = self.node_y
+        # unscale locations
+        node_x, node_y = self.unscale_pl(params.shift_factor, params.scale_factor)
+
+        # Global placement may have floating point positions.
+        # Currently only support BOOKSHELF format.
+        # This is mainly for debug.
+        if (
+            not params.legalize_flag
+            and not params.detailed_place_flag
+            and sol_file_format == place_io.SolutionFileFormat.BOOKSHELF
+        ):
+            self.write_pl(params, filename, node_x, node_y)
         else:
-            node_x = self.node_x * unscale_factor + shift_factor[0]
-            node_y = self.node_y * unscale_factor + shift_factor[1]
+            place_io.PlaceIOFunction.write(
+                self.rawdb, filename, sol_file_format, node_x, node_y
+            )
+        proc_time = time.time() - tt
+        logging.info("write %s takes %.3f seconds" % (str(sol_file_format), proc_time))
+        logging.info(f"Process: Output takes {proc_time:.3f} sec")
 
-        return node_x, node_y
-
-    def scale(self, shift_factor, scale_factor):
+    def read_pl(self, params, pl_file):
         """
-        @brief shift and scale coordinates
-        @param shift_factor shift factor to make the origin of the layout to (0, 0)
-        @param scale_factor scale factor
+        @brief read .pl file
+        @param pl_file .pl file
         """
-        logging.info(
-            "shift coordinate system by (%g, %g), scale coordinate system by %g"
-            % (shift_factor[0], shift_factor[1], scale_factor)
-        )
-        self.scale_pl(shift_factor, scale_factor)
-        self.node_size_x *= scale_factor
-        self.node_size_y *= scale_factor
-        self.pin_offset_x *= scale_factor
-        self.pin_offset_y *= scale_factor
-        self.xl -= shift_factor[0]
-        self.xl *= scale_factor
-        self.yl -= shift_factor[1]
-        self.yl *= scale_factor
-        self.xh -= shift_factor[0]
-        self.xh *= scale_factor
-        self.yh -= shift_factor[1]
-        self.yh *= scale_factor
-        self.routing_grid_xl -= shift_factor[0]
-        self.routing_grid_xl *= scale_factor
-        self.routing_grid_yl -= shift_factor[1]
-        self.routing_grid_yl *= scale_factor
-        self.routing_grid_xh -= shift_factor[0]
-        self.routing_grid_xh *= scale_factor
-        self.routing_grid_yh -= shift_factor[1]
-        self.routing_grid_yh *= scale_factor
-        self.row_height *= scale_factor
-        self.site_width *= scale_factor
+        tt = time.time()
+        logging.info("reading %s" % (pl_file))
+        count = 0
+        with open(pl_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("UCLA"):
+                    continue
+                # node positions
+                pos = re.search(
+                    r"(\w+)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s+([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\s*:\s*(\w+)",
+                    line,
+                )
+                if pos:
+                    node_id = self.node_name2id_map[pos.group(1)]
+                    self.node_x[node_id] = float(pos.group(2))
+                    self.node_y[node_id] = float(pos.group(6))
+                    self.node_orient[node_id] = pos.group(10)
+                    orient = pos.group(4)
+        if (
+            params.shift_factor[0] != 0
+            or params.shift_factor[1] != 0
+            or params.scale_factor != 1.0
+        ):
+            self.scale_pl(params.shift_factor, params.scale_factor)
+        logging.info("read_pl takes %.3f seconds" % (time.time() - tt))
 
-        # shift factor for rectangle
-        box_shift_factor = np.array([shift_factor, shift_factor]).reshape(1, -1)
-        self.rows -= box_shift_factor
-        self.rows *= scale_factor
-        self.total_space_area *= scale_factor * scale_factor  # this is area
+    def write_pl(self, params, pl_file, node_x, node_y):
+        """
+        @brief write .pl file
+        @param pl_file .pl file
+        """
+        tt = time.time()
+        logging.info("writing to %s" % (pl_file))
+        content = "UCLA pl 1.0\n"
+        str_node_names = np.array(self.node_names).astype(np.str)
+        str_node_orient = np.array(self.node_orient).astype(np.str)
+        for i in range(self.num_movable_nodes):
+            content += "\n%s %g %g : %s" % (
+                str_node_names[i],
+                node_x[i],
+                node_y[i],
+                str_node_orient[i],
+            )
+        # use the original fixed cells, because they are expanded if they contain shapes
+        fixed_node_indices = list(self.rawdb.fixedNodeIndices())
+        for i, node_id in enumerate(fixed_node_indices):
+            content += "\n%s %g %g : %s /FIXED" % (
+                str(self.rawdb.nodeName(node_id)),
+                float(self.rawdb.node(node_id).xl()),
+                float(self.rawdb.node(node_id).yl()),
+                "N",  # still hard-coded
+            )
+        for i in range(
+            self.num_movable_nodes + self.num_terminals,
+            self.num_movable_nodes + self.num_terminals + self.num_terminal_NIs,
+        ):
+            content += "\n%s %g %g : %s /FIXED_NI" % (
+                str_node_names[i],
+                node_x[i],
+                node_y[i],
+                str_node_orient[i],
+            )
+        with open(pl_file, "w") as f:
+            f.write(content)
+        logging.info("write_pl takes %.3f seconds" % (time.time() - tt))
 
-        if len(self.flat_region_boxes):
-            self.flat_region_boxes -= box_shift_factor
-            self.flat_region_boxes *= scale_factor
-        # may have performance issue
-        # I assume there are not many boxes
-        for i in range(len(self.regions)):
-            self.regions[i] -= box_shift_factor
-            self.regions[i] *= scale_factor
+    def write_nets(self, params, net_file):
+        """
+        @brief write .net file
+        @param params parameters
+        @param net_file .net file
+        """
+        tt = time.time()
+        logging.info("writing to %s" % (net_file))
+        content = "UCLA nets 1.0\n"
+        content += "\nNumNets : %d" % (len(self.net2pin_map))
+        content += "\nNumPins : %d" % (len(self.pin2net_map))
+        content += "\n"
+
+        for net_id in range(len(self.net2pin_map)):
+            pins = self.net2pin_map[net_id]
+            content += "\nNetDegree : %d %s" % (
+                len(pins),
+                self.net_names[net_id].decode(),
+            )
+            for pin_id in pins:
+                content += "\n\t%s %s : %d %d" % (
+                    self.node_names[self.pin2node_map[pin_id]].decode(),
+                    self.pin_direct[pin_id].decode(),
+                    self.pin_offset_x[pin_id] / params.scale_factor,
+                    self.pin_offset_y[pin_id] / params.scale_factor,
+                )
+
+        with open(net_file, "w") as f:
+            f.write(content)
+        logging.info("write_nets takes %.3f seconds" % (time.time() - tt))
+
+    def apply(self, params, node_x, node_y):
+        """
+        @brief apply placement solution and update database
+        """
+        # assign solution
+        self.node_x[: self.num_movable_nodes] = node_x[: self.num_movable_nodes]
+        self.node_y[: self.num_movable_nodes] = node_y[: self.num_movable_nodes]
+
+        # unscale locations
+        node_x, node_y = self.unscale_pl(params.shift_factor, params.scale_factor)
+
+        # update raw database
+        place_io.PlaceIOFunction.apply(self.rawdb, node_x, node_y)

@@ -190,6 +190,45 @@ class Params(ParamsParent):
         with open(filename, "r") as f:
             self.fromJson(json.load(f))
 
+    def __str__(self):
+        """
+        @brief string
+        """
+        return str(self.toJson())
+
+    def __repr__(self):
+        """
+        @brief print
+        """
+        return self.__str__()
+
+    def design_name(self):
+        """
+        @brief speculate the design name for dumping out intermediate solutions
+        """
+        if self.aux_input:
+            design_name = (
+                os.path.basename(self.aux_input).replace(".aux", "").replace(".AUX", "")
+            )
+        elif self.verilog_input:
+            design_name = (
+                os.path.basename(self.verilog_input).replace(".v", "").replace(".V", "")
+            )
+        elif self.def_input:
+            design_name = (
+                os.path.basename(self.def_input).replace(".def", "").replace(".DEF", "")
+            )
+        return design_name
+
+    def solution_file_suffix(self):
+        """
+        @brief speculate placement solution file suffix
+        """
+        if self.def_input is not None and os.path.exists(self.def_input):  # LEF/DEF
+            return "def"
+        else:  # Bookshelf
+            return "pl"
+
 
 def init_params() -> Params:
     json_path = os.path.join(os.path.dirname(__file__), "dreamplace", "params.json")
