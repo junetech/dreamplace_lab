@@ -1,11 +1,81 @@
 import logging
 import time
+from pathlib import PurePath
+from typing import Dict
 
 import numpy as np
+from openpyxl import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 import dreamplace.configure as configure
-from params import Params
-from place_db import PlaceDB
+from Params import Params
+from PlaceDB import PlaceDB
+
+
+def area_numpins_count(placedb: PlaceDB, aux_input: str):
+    # number of pins for each node
+    num_pins_in_nodes = np.zeros(placedb.num_nodes)
+    for node_id in range(placedb.num_physical_nodes):
+        num_pins_in_nodes[node_id] = len(placedb.node2pin_map[node_id])
+
+    node_size_x = np.array(placedb.node_size_x).astype(np.int32)
+    node_size_y = np.array(placedb.node_size_y).astype(np.int32)
+
+    # node area -> number of pins -> number of nodes
+    movable_count_dict: Dict[float, Dict[int, int]] = {}
+
+    # iterate over movable nodes
+    for node_id in range(placedb.num_movable_nodes):
+        node_area = node_size_x[node_id] * node_size_y[node_id]
+        if node_area not in movable_count_dict:
+            movable_count_dict[node_area] = {}
+        num_pins = num_pins_in_nodes[node_id]
+        if num_pins not in movable_count_dict[node_area]:
+            movable_count_dict[node_area][num_pins] = 1
+        else:
+            movable_count_dict[node_area][num_pins] += 1
+
+    # node area -> number of pins -> number of nodes
+    fixed_count_dict: Dict[float, Dict[int, int]] = {}
+
+    for node_id in range(
+        placedb.num_movable_nodes, placedb.num_movable_nodes + placedb.num_terminals
+    ):
+        node_area = node_size_x[node_id] * node_size_y[node_id]
+        if node_area not in fixed_count_dict:
+            fixed_count_dict[node_area] = {}
+        num_pins = num_pins_in_nodes[node_id]
+        if num_pins not in fixed_count_dict[node_area]:
+            fixed_count_dict[node_area][num_pins] = 1
+        else:
+            fixed_count_dict[node_area][num_pins] += 1
+
+    # write to workbook
+    wb = Workbook()
+
+    # movable sheet
+    mv_ws: Worksheet = wb.active
+    mv_ws.title = "Movable"
+    # fixed sheet
+    fx_ws: Worksheet = wb.create_sheet("Fixed")
+    col_header = ["Index", "NodeArea", "#pins", "Count"]
+    mv_ws.append(col_header)
+    fx_ws.append(col_header)
+
+    idx = 0
+    for node_area, num_pins_dict in movable_count_dict.items():
+        for num_pins, count in num_pins_dict.items():
+            mv_ws.append([idx, node_area, num_pins, count])
+            idx += 1
+    idx = 0
+    for node_area, num_pins_dict in fixed_count_dict.items():
+        for num_pins, count in num_pins_dict.items():
+            fx_ws.append([idx, node_area, num_pins, count])
+            idx += 1
+
+    xlsx_filename = PurePath(aux_input).name + ".xlsx"
+    # save the workbook
+    wb.save(filename=xlsx_filename)
 
 
 def place(params: Params):

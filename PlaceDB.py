@@ -2,13 +2,14 @@ import logging
 import math
 import os
 import time
+from typing import Dict
 
 import numpy as np
 import torch
 
 from dreamplace.ops.fence_region import fence_region
 from dreamplace.ops.place_io import place_io
-from params import Params
+from Params import Params
 
 DATATYPES = {"float32": np.float32, "float64": np.float64}
 
@@ -40,7 +41,7 @@ class PlaceDB(object):
         self.pin_offset_x: np.array = None  # 1D array, pin offset x to its node
         self.pin_offset_y: np.array = None  # 1D array, pin offset y to its node
 
-        self.net_name2id_map = {}  # net name to id map
+        self.net_name2id_map: Dict[str, int] = {}  # net name to id map
         self.net_names: np.array = None  # net name
         self.net_weights: np.array = None  # weights for each net
 
@@ -50,7 +51,7 @@ class PlaceDB(object):
             None  # starting index of each net in flat_net2pin_map
         )
 
-        self.node2pin_map: np.array = (
+        self.node2pin_map: Dict[int, np.array] = (
             None  # array of 1D array, contains pin id of each node
         )
         self.flat_node2pin_map: np.array = None  # flatten version of node2pin_map

@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 
-from params import init_params
+from Params import init_params
 from placer import place
 
 START_DT: datetime.datetime
