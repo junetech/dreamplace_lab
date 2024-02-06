@@ -1,10 +1,12 @@
 import datetime
 import logging
+from itertools import combinations
 from typing import Dict, Union
 
 import numpy as np
 from pyscipopt import Model, quicksum
 from pyscipopt.scip import Variable
+
 from dreamplace.PlaceDB import PlaceDB
 
 
@@ -27,10 +29,10 @@ def make_model(placedb: PlaceDB) -> Model:
     # node width & height
     n_wth, n_hgt = placedb.node_size_x, placedb.node_size_y
 
-    # node id -> list of pin id
-    pin_id_dict = placedb.node2pin_map
+    # pin id -> node id
+    pin_to_node_map = placedb.pin2node_map
     # list of pin offset
-    pin_offset_x, pin_offset_y = placedb.pin_offset_x, placedb.pin_offset_y
+    xpo, ypo = placedb.pin_offset_x, placedb.pin_offset_y
 
     # block area
     block_wth, block_hgt = placedb.xh - placedb.xl, placedb.yh - placedb.yl
@@ -70,7 +72,7 @@ def make_model(placedb: PlaceDB) -> Model:
 
     # there is no overlap among selected movable cells and fixed cells
     big_M_x, big_M_y = block_wth, block_hgt
-    delta: Dict[int, Dict[int, Variable]] = {}
+    delta: Dict[int, Dict[int, Dict[int, Variable]]] = {}
     for u in sel_mv_n_id:
         delta = {u: {}}
         for v in np.concatenate((sel_mv_n_id, fx_n_id), axis=None):
@@ -100,9 +102,43 @@ def make_model(placedb: PlaceDB) -> Model:
                 quicksum(delta[u][v][k] for k in range(1, 5)) <= 3,
                 name="OvlpCnt(%s,%s)" % (u, v),
             )
+    print("Add constraints end")
     # Constraints end
     # Objective
-    # mdl.setObjective(quicksum(y[j] for j in F), "maximize")
+    obj_term: Dict[int, Dict[int, Variable]] = {}
+    for net_id in range(len(placedb.net2pin_map)):
+        pins = placedb.net2pin_map[net_id]
+        for p, q in combinations(pins, 2):
+            if p not in obj_term:
+                obj_term[p] = {}
+            obj_term[p][q] = mdl.addVar(name="O(%s,%s)" % (p, q))
+            u, v = pin_to_node_map[p], pin_to_node_map[q]
+            mdl.addCons(
+                obj_term[p][q]
+                == x[u] ** 2
+                + xpo[p] ** 2
+                + 2 * x[u] * xpo[p]
+                + x[v] ** 2
+                + xpo[q] ** 2
+                + 2 * x[v] * xpo[q]
+                - 2 * x[u] * x[v]
+                - 2 * xpo[p] * xpo[q]
+                - 2 * x[u] * xpo[q]
+                - 2 * x[v] * xpo[p]
+                + y[u] ** 2
+                + ypo[p] ** 2
+                + 2 * y[u] * ypo[p]
+                + y[v] ** 2
+                + ypo[q] ** 2
+                + 2 * y[v] * ypo[q]
+                - 2 * y[u] * y[v]
+                - 2 * ypo[p] * ypo[q]
+                - 2 * y[u] * ypo[q]
+                - 2 * y[v] * ypo[p]
+            )
+    mdl.setObjective(
+        quicksum(obj_term[p].values() for p in placedb.pin2node_map), "minimize"
+    )
     mdl.data = x, y, delta
 
     return mdl
