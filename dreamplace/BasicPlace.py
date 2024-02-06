@@ -329,12 +329,17 @@ class BasicPlace(nn.Module):
             )
 
         # initialize x and y utilizing math model
-        from InitPlaceSolver import make_model
+        from InitPlaceSolver import make_model, return_sol
 
         tt = time.time()
         mdl = make_model(placedb)
         logging.info("math model building takes %.2f seconds" % (time.time() - tt))
-        raise UserWarning
+        tt2 = time.time()
+        x_dict, y_dict = return_sol(mdl)
+        logging.info("math model solving takes %.2f seconds" % (time.time() - tt2))
+        for node_idx in x_dict:
+            self.init_pos[node_idx] = x_dict[node_idx]
+            self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
 
         if placedb.num_filler_nodes:  # uniformly distribute filler cells in the layout
             if len(placedb.regions) > 0:
