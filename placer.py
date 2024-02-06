@@ -58,24 +58,22 @@ def area_numpins_count(placedb: PlaceDB, aux_input: str):
     mv_ws.title = "Movable"
     # fixed sheet
     fx_ws: Worksheet = wb.create_sheet("Fixed")
-    col_header = ["Index", "NodeArea", "#pins", "Count"]
+    col_header = ["NodeArea", "#pins", "Count"]
     mv_ws.append(col_header)
     fx_ws.append(col_header)
 
-    idx = 0
     for node_area, num_pins_dict in movable_count_dict.items():
         for num_pins, count in num_pins_dict.items():
-            mv_ws.append([idx, node_area, num_pins, count])
-            idx += 1
-    idx = 0
+            mv_ws.append([node_area, num_pins, count])
+
     for node_area, num_pins_dict in fixed_count_dict.items():
         for num_pins, count in num_pins_dict.items():
-            fx_ws.append([idx, node_area, num_pins, count])
-            idx += 1
+            fx_ws.append([node_area, num_pins, count])
 
-    xlsx_filename = PurePath(aux_input).name + ".xlsx"
+    xlsx_filename = PurePath(aux_input).stem + ".xlsx"
     # save the workbook
     wb.save(filename=xlsx_filename)
+    logging.info(f"Saved node area & #pins count to {xlsx_filename}")
 
 
 def place(params: Params):
@@ -88,5 +86,6 @@ def place(params: Params):
     tt = time.time()
     placedb = PlaceDB()
     placedb(params)
+    area_numpins_count(placedb, params.aux_input)
     proc_time = time.time() - tt
     logging.info(f"Process: Input takes {proc_time:.3f} sec")
