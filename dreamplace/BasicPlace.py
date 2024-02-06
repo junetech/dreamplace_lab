@@ -328,6 +328,14 @@ class BasicPlace(nn.Module):
                 size=placedb.num_movable_nodes,
             )
 
+        # initialize x and y utilizing math model
+        from InitPlaceSolver import make_model
+
+        tt = time.time()
+        mdl = make_model(placedb)
+        logging.info("math model building takes %.2f seconds" % (time.time() - tt))
+        raise UserWarning
+
         if placedb.num_filler_nodes:  # uniformly distribute filler cells in the layout
             if len(placedb.regions) > 0:
                 ### uniformly spread fillers in fence region
@@ -401,12 +409,13 @@ class BasicPlace(nn.Module):
                 )
 
             else:
-                self.init_pos[
-                    placedb.num_physical_nodes : placedb.num_nodes
-                ] = np.random.uniform(
-                    low=placedb.xl,
-                    high=placedb.xh - placedb.node_size_x[-placedb.num_filler_nodes],
-                    size=placedb.num_filler_nodes,
+                self.init_pos[placedb.num_physical_nodes : placedb.num_nodes] = (
+                    np.random.uniform(
+                        low=placedb.xl,
+                        high=placedb.xh
+                        - placedb.node_size_x[-placedb.num_filler_nodes],
+                        size=placedb.num_filler_nodes,
+                    )
                 )
                 self.init_pos[
                     placedb.num_nodes
