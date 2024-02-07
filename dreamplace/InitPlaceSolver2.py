@@ -15,8 +15,8 @@ class MyProb(cp.Problem):
 
 
 def make_model(placedb: PlaceDB) -> MyProb:
-    large_movable_node_area_criterion = 10000000
-    large_fixed_node_area_criterion = 100000
+    large_movable_node_area_criterion = 10000
+    large_fixed_node_area_criterion = 10000
 
     # Parameters start
     # movable node id list
