@@ -15,10 +15,11 @@ class MyProb(cp.Problem):
 
 
 def make_model(placedb: PlaceDB) -> MyProb:
+    s_dt = datetime.datetime.now()
     large_movable_node_area_criterion = 10000
     large_fixed_node_area_criterion = 10000
 
-    # Parameters start
+    # Index definition
     # movable node id list
     mv_n_id = np.array([n_id for n_id in range(placedb.num_movable_nodes)])
     # fixed node id list
@@ -31,9 +32,6 @@ def make_model(placedb: PlaceDB) -> MyProb:
             )
         ]
     )
-
-    # list of pin offset
-    xpo, ypo = placedb.pin_offset_x, placedb.pin_offset_y
 
     # node width & height
     n_wth, n_hgt = placedb.node_size_x, placedb.node_size_y
@@ -65,7 +63,12 @@ def make_model(placedb: PlaceDB) -> MyProb:
     sel_fx_p_id = np.concatenate(
         [placedb.node2pin_map[n_id] for n_id in sel_fx_n_id], axis=None
     )
+    logging.info(f"Index definition takes {datetime.datetime.now()-s_dt}"[:-3])
+    s_dt = datetime.datetime.now()
 
+    # Parameter definition
+    # list of pin offset
+    xpo, ypo = placedb.pin_offset_x, placedb.pin_offset_y
     # Position of fixed pins
     _xp_f, _yp_f = [], []
     for n_id in sel_fx_n_id:
@@ -80,6 +83,14 @@ def make_model(placedb: PlaceDB) -> MyProb:
 
     p_prime_set = np.concatenate((sel_mv_p_id, sel_fx_p_id), axis=None)
     pin_id2idx_map = {p_id: idx for idx, p_id in enumerate(p_prime_set)}
+    # block area
+    block_wth, block_hgt = placedb.xh - placedb.xl, placedb.yh - placedb.yl
+    logging.info(
+        f"Parameter definition before Laplacian takes {datetime.datetime.now()-s_dt}"[
+            :-3
+        ]
+    )
+    s_dt = datetime.datetime.now()
 
     # Create Laplacian matrix with pins
     pin_count = p_prime_set.size
@@ -95,10 +106,10 @@ def make_model(placedb: PlaceDB) -> MyProb:
     L_fm = L_matrix[m_pin_count:, 0:m_pin_count]
     L_ff = L_matrix[m_pin_count:, m_pin_count:]
 
-    # block area
-    block_wth, block_hgt = placedb.xh - placedb.xl, placedb.yh - placedb.yl
-
-    print("Parameter definition end")
+    logging.info(
+        f"Graph Laplacian calculation takes {datetime.datetime.now()-s_dt}"[:-3]
+    )
+    s_dt = datetime.datetime.now()
     # Parameters end
 
     # Variables
@@ -106,7 +117,8 @@ def make_model(placedb: PlaceDB) -> MyProb:
     xp_m = cp.Variable(m_pin_count)
     yn_m = cp.Variable(m_node_count)
     yp_m = cp.Variable(m_pin_count)
-    print("Variables definition end")
+    logging.info(f"Variable definition takes {datetime.datetime.now()-s_dt}"[:-3])
+    s_dt = datetime.datetime.now()
 
     # Constraints
     constrs: List[cp.Constraint] = []
@@ -135,6 +147,8 @@ def make_model(placedb: PlaceDB) -> MyProb:
                 yn_m[n_idx] + n_hgt[n_id] <= block_hgt,
             ]
         )
+    logging.info(f"Constraint definition takes {datetime.datetime.now()-s_dt}"[:-3])
+    s_dt = datetime.datetime.now()
 
     # Objective
     obj_constant = xp_f.T @ L_ff @ xp_f + yp_f.T @ L_ff @ yp_f
@@ -148,7 +162,8 @@ def make_model(placedb: PlaceDB) -> MyProb:
         ),
         constraints=constrs,
     )
-    print("Objective definition end")
+    logging.info(f"Objective definition takes {datetime.datetime.now()-s_dt}"[:-3])
+    s_dt = datetime.datetime.now()
 
     prob.mv_n_id = sel_mv_n_id
     prob.x, prob.y = xn_m, yn_m
@@ -166,7 +181,6 @@ def return_sol(prob: MyProb) -> Tuple[Dict[int, float], Dict[int, float]]:
     y_dict = {n_id: prob.y.value[idx] for idx, n_id in enumerate(prob.mv_n_id)}
     for n_id in x_dict:
         print(f"Node {n_id} x={x_dict[n_id]:.3f} y={y_dict[n_id]:.3f}")
-    raise UserWarning
     return x_dict, y_dict
 
 

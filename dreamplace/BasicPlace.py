@@ -336,6 +336,7 @@ class BasicPlace(nn.Module):
         logging.info("math model building takes %.2f seconds" % (time.time() - tt))
         tt2 = time.time()
         x_dict, y_dict = return_sol(mdl)
+        raise UserWarning
         for node_idx in x_dict:
             self.init_pos[node_idx] = x_dict[node_idx]
             self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
