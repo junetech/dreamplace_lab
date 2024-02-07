@@ -15,8 +15,8 @@ class MyProb(cp.Problem):
 
 
 def make_model(placedb: PlaceDB) -> MyProb:
-    large_movable_node_area_criterion = 10000
-    large_fixed_node_area_criterion = 10000
+    large_movable_node_area_criterion = 1000000
+    large_fixed_node_area_criterion = 100000
 
     # Parameters start
     # movable node id list
@@ -65,7 +65,6 @@ def make_model(placedb: PlaceDB) -> MyProb:
     sel_fx_p_id = np.concatenate(
         [placedb.node2pin_map[n_id] for n_id in sel_fx_n_id], axis=None
     )
-    # fx_pin_count = sel_fx_p_id.size
 
     # Position of fixed pins
     _xp_f, _yp_f = [], []
@@ -94,7 +93,10 @@ def make_model(placedb: PlaceDB) -> MyProb:
         )
     L_mm = L_matrix[0:m_pin_count, 0:m_pin_count]
     L_fm = L_matrix[m_pin_count:, 0:m_pin_count]
-    # L_ff = L_matrix[m_pin_count:, m_pin_count:]
+    L_ff = L_matrix[m_pin_count:, m_pin_count:]
+
+    # block area
+    block_wth, block_hgt = placedb.xh - placedb.xl, placedb.yh - placedb.yl
 
     print("Parameter definition end")
     # Parameters end
@@ -112,6 +114,7 @@ def make_model(placedb: PlaceDB) -> MyProb:
     #     for p_id in placedb.node2pin_map[n_id]:
     #         p_idx = pin_id2idx_map[p_id]
     #         constrs.append(xn_m[n_idx] + xpo[p_id] == xp_m[p_idx])
+    #         constrs.append(yn_m[n_idx] + ypo[p_id] == yp_m[p_idx])
     for n_idx, n_id in enumerate(sel_mv_n_id):
         constrs.extend(
             [
@@ -123,14 +126,25 @@ def make_model(placedb: PlaceDB) -> MyProb:
                 for p_id in placedb.node2pin_map[n_id]
             ]
         )
+    for n_idx, n_id in enumerate(sel_mv_n_id):
+        constrs.extend(
+            [
+                xn_m[n_idx] >= 0,
+                xn_m[n_idx] + n_wth[n_id] <= block_wth,
+                yn_m[n_idx] >= 0,
+                yn_m[n_idx] + n_hgt[n_id] <= block_hgt,
+            ]
+        )
 
     # Objective
+    obj_constant = xp_f.T @ L_ff @ xp_f + yp_f.T @ L_ff @ yp_f
     prob = MyProb(
         objective=cp.Minimize(
             cp.quad_form(xp_m, L_mm, assume_PSD=True)
             + 2 * xp_f @ L_fm @ xp_m
             + cp.quad_form(yp_m, L_mm, assume_PSD=True)
             + 2 * yp_f @ L_fm @ yp_m
+            + obj_constant
         ),
         constraints=constrs,
     )
@@ -142,8 +156,8 @@ def make_model(placedb: PlaceDB) -> MyProb:
 
 
 def return_sol(prob: MyProb) -> Tuple[Dict[int, float], Dict[int, float]]:
-    scip_params = {"limits/gap": 0.1}  # stop when optimality gap >= 10%
-    prob.solve(verbose=True)
+    # scip_params = {"limits/gap": 0.1}  # stop when optimality gap >= 10%
+    prob.solve(verbose=True, solver="SCIP")
     if prob.status == "infeasible":
         return {}, {}
     # x_dict = {}
@@ -151,6 +165,9 @@ def return_sol(prob: MyProb) -> Tuple[Dict[int, float], Dict[int, float]]:
     #     x_dict[n_id] = x.value[idx]
     x_dict = {n_id: prob.x.value[idx] for idx, n_id in enumerate(prob.mv_n_id)}
     y_dict = {n_id: prob.y.value[idx] for idx, n_id in enumerate(prob.mv_n_id)}
+    for n_id in x_dict:
+        print(f"Node {n_id} x={x_dict[n_id]:.3f} y={y_dict[n_id]:.3f}")
+    raise UserWarning
     return x_dict, y_dict
 
 
