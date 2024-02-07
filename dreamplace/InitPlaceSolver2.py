@@ -156,8 +156,7 @@ def make_model(placedb: PlaceDB) -> MyProb:
 
 
 def return_sol(prob: MyProb) -> Tuple[Dict[int, float], Dict[int, float]]:
-    # scip_params = {"limits/gap": 0.1}  # stop when optimality gap >= 10%
-    prob.solve(verbose=True, solver="SCIP")
+    prob.solve(verbose=True)
     if prob.status == "infeasible":
         return {}, {}
     # x_dict = {}
