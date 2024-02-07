@@ -37,6 +37,8 @@ import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.pin_weight_sum.pin_weight_sum as pws
 import dreamplace.ops.timing.timing as timing
 
+from InitPlaceSolver2 import make_model, return_sol
+
 
 class PlaceDataCollection(object):
     """
@@ -329,14 +331,11 @@ class BasicPlace(nn.Module):
             )
 
         # initialize x and y utilizing math model
-        from InitPlaceSolver2 import make_model, return_sol
-
         tt = time.time()
         mdl = make_model(placedb)
         logging.info("math model building takes %.2f seconds" % (time.time() - tt))
         tt2 = time.time()
         x_dict, y_dict = return_sol(mdl)
-        raise UserWarning
         for node_idx in x_dict:
             self.init_pos[node_idx] = x_dict[node_idx]
             self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
