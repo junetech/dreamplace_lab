@@ -37,7 +37,7 @@ import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.pin_weight_sum.pin_weight_sum as pws
 import dreamplace.ops.timing.timing as timing
 
-from InitPlaceSolver2 import make_model, return_sol
+from dreamplace.InitPlaceSolver import make_model, return_sol
 
 
 class PlaceDataCollection(object):
