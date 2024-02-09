@@ -1,14 +1,5 @@
-BENCH_DIR="ispd2006"
-INS_NAME_LIST="
-adaptec5
-newblue1
-newblue2
-newblue3
-newblue4
-newblue5
-newblue6
-newblue7
-"
+BENCH_DIR=ispd2006
+INS_NAME_LIST=(adaptec5 newblue1 newblue2 newblue3 newblue4 newblue5 newblue6 newblue7)
 
 mkdir $BENCH_DIR
 cd $BENCH_DIR
