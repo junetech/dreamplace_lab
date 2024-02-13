@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 import cvxpy as cp
 import numpy as np
 
+from dreamplace.LaplacianCalc import calc_laplacian
 from dreamplace.PlaceDB import PlaceDB
 
 
@@ -93,15 +94,7 @@ def make_model(placedb: PlaceDB) -> MyProb:
     s_dt = datetime.datetime.now()
 
     # Create Laplacian matrix with pins
-    pin_count = p_prime_set.size
-    L_matrix = np.zeros((pin_count, pin_count))
-    for pins_in_a_net in placedb.net2pin_map:
-        bool_list = np.isin(p_prime_set, pins_in_a_net, assume_unique=True)
-        if bool_list.sum() <= 1:
-            continue
-        L_matrix += np.diag(bool_list) * bool_list.sum() - np.outer(
-            bool_list, bool_list
-        )
+    L_matrix = calc_laplacian(p_prime_set, placedb.net2pin_map)
     L_mm = L_matrix[0:m_pin_count, 0:m_pin_count]
     L_fm = L_matrix[m_pin_count:, 0:m_pin_count]
     L_ff = L_matrix[m_pin_count:, m_pin_count:]
