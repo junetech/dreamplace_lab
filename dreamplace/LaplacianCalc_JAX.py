@@ -8,6 +8,8 @@ def calc_laplacian(node_list, edge_matrix):
     for idx, pins_in_a_net in enumerate(edge_matrix):
         print(idx, "/", edge_count)
         bool_list = jnp.isin(node_list, pins_in_a_net, assume_unique=True)
+        if bool_list.sum() <= 1:
+            continue
         l_matrix += jnp.diag(bool_list) * bool_list.sum() - jnp.outer(
             bool_list, bool_list
         )
