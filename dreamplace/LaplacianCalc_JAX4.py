@@ -1,4 +1,7 @@
-# currently not working
+"""vmapping as much as possible
+incurs out of memory error
+"""
+
 # import numpy as np
 import jax.numpy as jnp
 from jax import jit, vmap
