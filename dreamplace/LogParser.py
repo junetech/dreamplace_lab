@@ -10,11 +10,13 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 START_DT: datetime.datetime
 
-PLACER_LOG_FILENAME = "dreamplace_lab.log"
+PLACER_LOG_FILENAME = "dp20240213_jax2.log"
+# PLACER_LOG_FILENAME = "dreamplace_lab.log"
 PARAMS_PATTERN = r"^\[INFO\]root-parameters=(\{.*\})"
 TIME_PATTERN = r"^\[INFO\]root-Process:(.*)takes(\d+\.\d+)sec$"
 OBJ_PATTERN = r"^\[INFO\]root-Process:(.*)haswHPWLof(\d+\.\d+)&overflowof(\d+\.\d+)"
-OUTPUT_FILENAME = "dreamplace_runs.xlsx"
+# OUTPUT_FILENAME = "dreamplace_runs.xlsx"
+OUTPUT_FILENAME = "dp20240213_jax2.xlsx"
 
 
 def parse_a_line(a_line: str) -> Dict[str, Dict[str, Any]]:
