@@ -5,10 +5,9 @@ from jax import jit, vmap
 @jit
 def calc_additives(bool_list):
     """vmap trick from https://github.com/google/jax/issues/13054"""
-    return (
-        bool_list.sum() * jnp.diag(bool_list)
-        - vmap(vmap(jnp.multiply, (None, 0)), (0, None))(bool_list, bool_list)
-    ).reshape(bool_list.size**2)
+    return bool_list.sum() * jnp.diag(bool_list) - vmap(
+        vmap(jnp.multiply, (None, 0)), (0, None)
+    )(bool_list, bool_list)
 
 
 def calc_laplacian(node_list, edge_matrix):
