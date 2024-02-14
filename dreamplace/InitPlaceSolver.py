@@ -17,6 +17,7 @@ class MyProb(cp.Problem):
 
 def make_model(placedb: PlaceDB) -> MyProb:
     s_dt = datetime.datetime.now()
+    # TODO: define these values outside the code
     large_movable_node_area_criterion = 10000
     large_fixed_node_area_criterion = 10000
 
@@ -45,7 +46,6 @@ def make_model(placedb: PlaceDB) -> MyProb:
         ]
     )
     m_node_count = sel_mv_n_id.size
-    print(m_node_count, "large movable nodes selected")
     # selected subset of fixed nodes
     sel_fx_n_id = np.array(
         [
@@ -54,7 +54,6 @@ def make_model(placedb: PlaceDB) -> MyProb:
             if n_wth[n_id] * n_hgt[n_id] >= large_fixed_node_area_criterion
         ]
     )
-    print(len(sel_fx_n_id), "large fixed nodes selected")
 
     # selected subset of movable and fixed pins
     sel_mv_p_id = np.concatenate(
@@ -64,7 +63,26 @@ def make_model(placedb: PlaceDB) -> MyProb:
     sel_fx_p_id = np.concatenate(
         [placedb.node2pin_map[n_id] for n_id in sel_fx_n_id], axis=None
     )
+    f_pin_count = sel_fx_p_id.size
     logging.info(f"Index definition takes {datetime.datetime.now()-s_dt}"[:-3])
+    logging.info(
+        "  Among %d fixed nodes, those with area larger than %d are selected"
+        % (placedb.num_terminals, large_fixed_node_area_criterion)
+    )
+    logging.info(
+        "  Selected %d large fixed nodes have %d pins" % (sel_fx_n_id.size, f_pin_count)
+    )
+    logging.info(
+        "  Among %d movable nodes, those with area larger than %d are selected"
+        % (placedb.num_movable_nodes, large_movable_node_area_criterion)
+    )
+    logging.info(
+        "  Selected %d large movable nodes have %d pins" % (m_node_count, m_pin_count)
+    )
+    logging.info(
+        "  Size of Lagrangian matrix is (%d,%d)"
+        % (f_pin_count + m_pin_count, f_pin_count + m_pin_count)
+    )
     s_dt = datetime.datetime.now()
 
     # Parameter definition
@@ -172,8 +190,8 @@ def return_sol(prob: MyProb) -> Tuple[Dict[int, float], Dict[int, float]]:
     #     x_dict[n_id] = x.value[idx]
     x_dict = {n_id: prob.x.value[idx] for idx, n_id in enumerate(prob.mv_n_id)}
     y_dict = {n_id: prob.y.value[idx] for idx, n_id in enumerate(prob.mv_n_id)}
-    for n_id in x_dict:
-        print(f"Node {n_id} x={x_dict[n_id]:.3f} y={y_dict[n_id]:.3f}")
+    # for n_id in x_dict:
+    #     print(f"Node {n_id} x={x_dict[n_id]:.3f} y={y_dict[n_id]:.3f}")
     return x_dict, y_dict
 
 
