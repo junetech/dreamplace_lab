@@ -12,7 +12,7 @@ from Params import Params
 from PlaceDB import PlaceDB
 
 
-def area_numpins_count(placedb: PlaceDB, aux_input: str):
+def make_area_numpin_count_xlsx(placedb: PlaceDB, aux_input: str):
     # number of pins for each node
     num_pins_in_nodes = np.zeros(placedb.num_nodes)
     for node_id in range(placedb.num_physical_nodes):
@@ -76,16 +76,59 @@ def area_numpins_count(placedb: PlaceDB, aux_input: str):
     logging.info(f"Saved node area & #pins count to {xlsx_filename}")
 
 
+def make_numpin_count_xlsx(placedb: PlaceDB, aux_input: str):
+    # number of pins for each node
+    num_pins_in_nodes = np.array(
+        [
+            len(placedb.node2pin_map[node_id])
+            for node_id in range(placedb.num_physical_nodes)
+        ]
+    )
+    # number of pins for each edge
+    num_pins_in_edges = np.array(
+        [len(placedb.net2pin_map[net_id]) for net_id in range(len(placedb.net2pin_map))]
+    )
+    logging.info("Total number of pins is %d" % np.sum(num_pins_in_nodes))
+
+    # write to workbook
+    wb = Workbook()
+
+    # node sheet
+    node_ws: Worksheet = wb.active
+    node_ws.title = "node"
+    # edge sheet
+    edge_ws: Worksheet = wb.create_sheet("edge")
+    col_header = ["Degree", "#pins"]
+    node_ws.append(col_header)
+    edge_ws.append(col_header)
+
+    for count, degree in zip(
+        *np.histogram(num_pins_in_nodes, bins=sorted(set(num_pins_in_nodes)))
+    ):
+        node_ws.append([degree, count])
+
+    for count, degree in zip(
+        *np.histogram(num_pins_in_edges, bins=sorted(set(num_pins_in_edges)))
+    ):
+        edge_ws.append([degree, count])
+
+    xlsx_filename = PurePath(aux_input).stem + "_pincount.xlsx"
+    # save the workbook
+    wb.save(filename=xlsx_filename)
+    logging.info(f"Saved node-wise & edge-wise pin count to {xlsx_filename}")
+
+
 def place(params: Params):
-    assert (not params.gpu) or configure.compile_configurations[
-        "CUDA_FOUND"
-    ] == "TRUE", "CANNOT enable GPU without CUDA compiled"
+    # assert (not params.gpu) or configure.compile_configurations[
+    #     "CUDA_FOUND"
+    # ] == "TRUE", "CANNOT enable GPU without CUDA compiled"
 
     np.random.seed(params.random_seed)
     # read database
     tt = time.time()
     placedb = PlaceDB()
     placedb(params)
-    area_numpins_count(placedb, params.aux_input)
+    # make_area_numpin_count_xlsx(placedb, params.aux_input)
+    make_numpin_count_xlsx(placedb, params.aux_input)
     proc_time = time.time() - tt
     logging.info(f"Process: Input takes {proc_time:.3f} sec")
