@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 import cvxpy as cp
 import numpy as np
 
-from dreamplace.LaplacianCalc import calc_laplacian
+from dreamplace.LaplacianCalc_JAX import calc_laplacian
 from dreamplace.PlaceDB import PlaceDB
 
 

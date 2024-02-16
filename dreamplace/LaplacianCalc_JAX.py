@@ -1,20 +1,22 @@
 """from numpy to jax.numpy
 """
 
+from itertools import combinations
 import jax.numpy as jnp
 
 
-def calc_laplacian(node_list, edge_matrix):
-    node_count = node_list.size
-    # edge_count = len(edge_matrix)
-    l_matrix = jnp.zeros((node_count, node_count))
+def calc_laplacian(pin_list, edge_matrix):
+    pin_id2idx: dict[int, int] = {pin_id: idx for idx, pin_id in enumerate(pin_list)}
+    pin_count = pin_list.size
+    l_matrix = jnp.zeros((pin_count, pin_count), dtype=jnp.int16)
     for pins_in_a_net in edge_matrix:
-        # for idx, pins_in_a_net in enumerate(edge_matrix):
-        # print(idx, "/", edge_count)
-        bool_list = jnp.isin(node_list, pins_in_a_net, assume_unique=True)
-        if bool_list.sum() <= 1:
+        pins_of_interest = jnp.intersect1d(pins_in_a_net, pin_list)
+        degree_plus_one = len(pins_of_interest)
+        if degree_plus_one <= 1:
             continue
-        l_matrix += jnp.diag(bool_list) * bool_list.sum() - jnp.outer(
-            bool_list, bool_list
-        )
+        for u, v in combinations(pins_of_interest, 2):
+            l_matrix[pin_id2idx[u]][pin_id2idx[v]] -= 1
+            l_matrix[pin_id2idx[v]][pin_id2idx[u]] -= 1
+        for pin in pins_of_interest:
+            l_matrix[pin_id2idx[pin]][pin_id2idx[pin]] += degree_plus_one - 1
     return l_matrix
