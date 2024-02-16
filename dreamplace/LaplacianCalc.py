@@ -14,9 +14,10 @@ def calc_laplacian(pin_list, edge_matrix):
         degree_plus_one = len(pins_of_interest)
         if degree_plus_one <= 1:
             continue
-        for u, v in combinations(pins_of_interest, 2):
-            l_matrix[pin_id2idx[u]][pin_id2idx[v]] -= 1
-            l_matrix[pin_id2idx[v]][pin_id2idx[u]] -= 1
-        for pin in pins_of_interest:
-            l_matrix[pin_id2idx[pin]][pin_id2idx[pin]] += degree_plus_one - 1
+        pin_indices = [pin_id2idx[pin] for pin in pins_of_interest]
+        for p, q in combinations(pin_indices, 2):
+            l_matrix[p][q] -= 1
+            l_matrix[q][p] -= 1
+        for p in pin_indices:
+            l_matrix[p][p] += degree_plus_one - 1
     return l_matrix
