@@ -332,7 +332,7 @@ class BasicPlace(nn.Module):
         # initialize (x,y) of large movable nodes utilizing math model
         tt_1 = time.time()
         mdl = make_lmn_model(placedb)
-        if mdl.mv_n_id:
+        if mdl.mv_n_id.size == 0:
             logging.info(
                 "Initial-placing large nodes: math model building takes %.2f sec."
                 % (time.time() - tt_1)
@@ -355,7 +355,7 @@ class BasicPlace(nn.Module):
         # initialize (x,y) of small movable nodes utilizing math model
         tt_2 = time.time()
         mdl = make_smn_model(placedb)
-        if mdl.mv_n_id:
+        if mdl.mv_n_id.size == 0:
             logging.info(
                 "Initial-placing small nodes: math model building takes %.2f sec."
                 % (time.time() - tt_2)
