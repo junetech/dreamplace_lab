@@ -36,8 +36,7 @@ import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.pin_weight_sum.pin_weight_sum as pws
 import dreamplace.ops.timing.timing as timing
-
-from dreamplace.InitPlaceSolver import make_model, return_sol
+from dreamplace.InitPlaceSolver import make_lmn_model, make_smn_model, return_sol
 
 
 class PlaceDataCollection(object):
@@ -330,27 +329,50 @@ class BasicPlace(nn.Module):
                 size=placedb.num_movable_nodes,
             )
 
-        # initialize x and y utilizing math model
-        tt = time.time()
-        mdl = make_model(placedb)
+        # initialize (x,y) of large movable nodes utilizing math model
+        tt_1 = time.time()
+        mdl = make_lmn_model(placedb)
         if mdl.mv_n_id:
             logging.info(
-                "Initial-placing large nodes: math model building takes %.2f seconds"
-                % (time.time() - tt)
+                "Initial-placing large nodes: math model building takes %.2f sec."
+                % (time.time() - tt_1)
             )
-            tt2 = time.time()
+            tt_2 = time.time()
             x_dict, y_dict = return_sol(mdl)
             for node_idx in x_dict:
                 self.init_pos[node_idx] = x_dict[node_idx]
                 self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
             logging.info(
-                "Initial-placing large nodes: math model solving takes %.2f seconds"
-                % (time.time() - tt2)
+                "Initial-placing large nodes: math model solving takes %.2f sec."
+                % (time.time() - tt_2)
             )
         else:
             logging.info(
-                "Initial-placing large nodes: no movable nodes; checking takes %.2f seconds"
-                % (time.time() - tt)
+                "Initial-placing large nodes: no movable nodes; checking takes %.2f sec."
+                % (time.time() - tt_1)
+            )
+
+        # initialize (x,y) of small movable nodes utilizing math model
+        tt_2 = time.time()
+        mdl = make_smn_model(placedb)
+        if mdl.mv_n_id:
+            logging.info(
+                "Initial-placing small nodes: math model building takes %.2f sec."
+                % (time.time() - tt_2)
+            )
+            tt_2 = time.time()
+            x_dict, y_dict = return_sol(mdl)
+            for node_idx in x_dict:
+                self.init_pos[node_idx] = x_dict[node_idx]
+                self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
+            logging.info(
+                "Initial-placing small nodes: math model solving takes %.2f sec."
+                % (time.time() - tt_2)
+            )
+        else:
+            logging.info(
+                "Initial-placing small nodes: no movable nodes; checking takes %.2f sec."
+                % (time.time() - tt_2)
             )
 
         if placedb.num_filler_nodes:  # uniformly distribute filler cells in the layout
