@@ -8,10 +8,6 @@ import numpy as np
 from dreamplace.LaplacianCalc import calc_laplacian
 from dreamplace.PlaceDB import PlaceDB
 
-# TODO: define these values outside the code
-LARGE_MOVABLE_NODE_AREA_CRITERION = 10000
-LARGE_FIXED_NODE_AREA_CRITERION = 10000
-
 
 class MyProb(cp.Problem):
     mv_n_id: np.array
@@ -19,48 +15,76 @@ class MyProb(cp.Problem):
     y: cp.Variable
 
 
-def make_lmn_model(placedb: PlaceDB) -> MyProb:
+def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, float]]:
+    # TODO: define these values outside the code
+    large_movable_node_area_criterion = 10000
+    large_fixed_node_area_criterion = 10000
+
+    # initialize (x,y) of large movable nodes utilizing math model
     s_dt = datetime.datetime.now()
-
-    # Index definition
-    # movable node id list
-    mv_n_id = np.array([n_id for n_id in range(placedb.num_movable_nodes)])
-    # fixed node id list
-    fx_n_id = np.array(
-        [
-            n_id
-            for n_id in range(
-                placedb.num_movable_nodes,
-                placedb.num_movable_nodes + placedb.num_terminals,
-            )
-        ]
-    )
-
-    # node width & height
-    n_wth, n_hgt = placedb.node_size_x, placedb.node_size_y
-    # selected subset of movable nodes
     sel_mv_n_id = np.array(
         [
             n_id
-            for n_id in mv_n_id
-            if n_wth[n_id] * n_hgt[n_id] >= LARGE_MOVABLE_NODE_AREA_CRITERION
+            for n_id in np.array([n_id for n_id in range(placedb.num_movable_nodes)])
+            if placedb.node_size_x[n_id] * placedb.node_size_y[n_id]
+            >= large_movable_node_area_criterion
         ]
     )
-    m_node_count = sel_mv_n_id.size
-    # if no movable node, return empty problem
-    if m_node_count == 0:
-        my_prob = MyProb()
-        my_prob.mv_n_id = []
-        return my_prob
+    if sel_mv_n_id.size > 0:
+        logging.info(
+            "  Among %d movable nodes, those with area larger than %d are selected"
+            % (placedb.num_movable_nodes, large_movable_node_area_criterion)
+        )
+        sel_fx_n_id = np.array(
+            [
+                n_id
+                for n_id in np.array(
+                    [
+                        n_id
+                        for n_id in range(
+                            placedb.num_movable_nodes,
+                            placedb.num_movable_nodes + placedb.num_terminals,
+                        )
+                    ]
+                )
+                if placedb.node_size_x[n_id] * placedb.node_size_y[n_id]
+                >= large_fixed_node_area_criterion
+            ]
+        )
+        logging.info(
+            "  Among %d fixed nodes, those with area larger than %d are selected"
+            % (placedb.num_terminals, large_fixed_node_area_criterion)
+        )
+        mdl = make_lmn_model(placedb, sel_mv_n_id, sel_fx_n_id)
+        logging.info(
+            f"Initial-placing large nodes: math model building takes {datetime.datetime.now() - s_dt} sec."
+        )
 
-    # selected subset of fixed nodes
-    sel_fx_n_id = np.array(
-        [
-            n_id
-            for n_id in fx_n_id
-            if n_wth[n_id] * n_hgt[n_id] >= LARGE_FIXED_NODE_AREA_CRITERION
-        ]
-    )
+        s_dt = datetime.datetime.now()
+        x_dict, y_dict = return_sol(mdl)
+        logging.info(
+            f"Initial-placing large nodes: math model solving takes {datetime.datetime.now() - s_dt} sec."
+        )
+    else:
+        logging.info(
+            f"Initial-placing large nodes: no movable nodes; checking takes {datetime.datetime.now() - s_dt} sec."
+        )
+        x_dict, y_dict = {}, {}
+
+    # initialize (x,y) of small movable nodes utilizing math model
+
+    return x_dict, y_dict
+
+
+def make_lmn_model(placedb: PlaceDB, sel_mv_n_id, sel_fx_n_id) -> MyProb:
+    s_dt = datetime.datetime.now()
+
+    # Index definition
+
+    # selected subset of movable nodes
+    m_node_count = sel_mv_n_id.size
+    # node width & height
+    n_wth, n_hgt = placedb.node_size_x, placedb.node_size_y
 
     # selected subset of movable and fixed pins
     sel_mv_p_id = np.concatenate(
@@ -73,15 +97,7 @@ def make_lmn_model(placedb: PlaceDB) -> MyProb:
     f_pin_count = sel_fx_p_id.size
     logging.info(f"Index definition takes {datetime.datetime.now()-s_dt}"[:-3])
     logging.info(
-        "  Among %d fixed nodes, those with area larger than %d are selected"
-        % (placedb.num_terminals, LARGE_FIXED_NODE_AREA_CRITERION)
-    )
-    logging.info(
         "  Selected %d large fixed nodes have %d pins" % (sel_fx_n_id.size, f_pin_count)
-    )
-    logging.info(
-        "  Among %d movable nodes, those with area larger than %d are selected"
-        % (placedb.num_movable_nodes, LARGE_MOVABLE_NODE_AREA_CRITERION)
     )
     logging.info(
         "  Selected %d large movable nodes have %d pins" % (m_node_count, m_pin_count)
@@ -200,73 +216,3 @@ def return_sol(prob: MyProb) -> Tuple[Dict[int, float], Dict[int, float]]:
     # for n_id in x_dict:
     #     print(f"Node {n_id} x={x_dict[n_id]:.3f} y={y_dict[n_id]:.3f}")
     return x_dict, y_dict
-
-
-def make_smn_model(placedb: PlaceDB) -> MyProb:
-    s_dt = datetime.datetime.now()
-
-    # Index definition
-    # movable node id list
-    mv_n_id = np.array([n_id for n_id in range(placedb.num_movable_nodes)])
-    # fixed node id list
-    fx_n_id = np.array(
-        [
-            n_id
-            for n_id in range(
-                placedb.num_movable_nodes,
-                placedb.num_movable_nodes + placedb.num_terminals,
-            )
-        ]
-    )
-
-    # node width & height
-    n_wth, n_hgt = placedb.node_size_x, placedb.node_size_y
-    # selected subset of movable nodes
-    sel_mv_n_id = np.array(
-        [
-            n_id
-            for n_id in mv_n_id
-            if n_wth[n_id] * n_hgt[n_id] < LARGE_MOVABLE_NODE_AREA_CRITERION
-        ]
-    )
-    m_node_count = sel_mv_n_id.size
-    # if no movable node, return empty problem
-    if m_node_count == 0:
-        my_prob = MyProb()
-        my_prob.mv_n_id = []
-        return my_prob
-
-    # selected subset of fixed nodes
-    sel_fx_n_id = np.array(
-        [
-            n_id
-            for n_id in fx_n_id
-            if n_wth[n_id] * n_hgt[n_id] < LARGE_FIXED_NODE_AREA_CRITERION
-        ]
-    )
-
-    my_prob = MyProb()
-    my_prob.mv_n_id = []
-    return my_prob
-
-
-def main():
-    s_dt = datetime.datetime.now()
-    mdl = make_model()
-    elapsed_d = datetime.datetime.now() - s_dt
-    logging.info(f"Math model building took {elapsed_d}"[:-3])
-    s_dt = datetime.datetime.now()
-    mdl.hideOutput()  # silent mode
-    mdl.optimize()
-    elapsed_d = datetime.datetime.now() - s_dt
-    logging.info(f"Math model solving took {elapsed_d}"[:-3])
-
-
-if __name__ == "__main__":
-    START_DT = datetime.datetime.now()
-    main()
-    end_dt = datetime.datetime.now()
-    elapsed_d = end_dt - START_DT
-    logging.info(
-        f"{__name__} program end @ {end_dt}"[:-3] + f"; took total {elapsed_d}"[:-3]
-    )
