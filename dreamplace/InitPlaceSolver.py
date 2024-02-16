@@ -46,6 +46,12 @@ def make_model(placedb: PlaceDB) -> MyProb:
         ]
     )
     m_node_count = sel_mv_n_id.size
+    # if no large movable node, return empty problem
+    if m_node_count == 0:
+        my_prob = MyProb()
+        my_prob.mv_n_id = []
+        return my_prob
+
     # selected subset of fixed nodes
     sel_fx_n_id = np.array(
         [

@@ -333,13 +333,25 @@ class BasicPlace(nn.Module):
         # initialize x and y utilizing math model
         tt = time.time()
         mdl = make_model(placedb)
-        logging.info("math model building takes %.2f seconds" % (time.time() - tt))
-        tt2 = time.time()
-        x_dict, y_dict = return_sol(mdl)
-        for node_idx in x_dict:
-            self.init_pos[node_idx] = x_dict[node_idx]
-            self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
-        logging.info("math model solving takes %.2f seconds" % (time.time() - tt2))
+        if mdl.mv_n_id:
+            logging.info(
+                "Initial-placing large nodes: math model building takes %.2f seconds"
+                % (time.time() - tt)
+            )
+            tt2 = time.time()
+            x_dict, y_dict = return_sol(mdl)
+            for node_idx in x_dict:
+                self.init_pos[node_idx] = x_dict[node_idx]
+                self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
+            logging.info(
+                "Initial-placing large nodes: math model solving takes %.2f seconds"
+                % (time.time() - tt2)
+            )
+        else:
+            logging.info(
+                "Initial-placing large nodes: no movable nodes; checking takes %.2f seconds"
+                % (time.time() - tt)
+            )
 
         if placedb.num_filler_nodes:  # uniformly distribute filler cells in the layout
             if len(placedb.regions) > 0:
