@@ -86,7 +86,9 @@ def make_lmn_model(placedb: PlaceDB) -> MyProb:
     logging.info(
         "  Selected %d large movable nodes have %d pins" % (m_node_count, m_pin_count)
     )
-    logging.info("  Total %d pins in selected large nodes" % f_pin_count + m_pin_count)
+    logging.info(
+        "  Total %d pins in selected large nodes" % (f_pin_count + m_pin_count)
+    )
     s_dt = datetime.datetime.now()
 
     # Parameter definition
