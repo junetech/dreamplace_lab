@@ -32,7 +32,7 @@ def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, floa
     )
     if sel_mv_n_id.size > 0:
         logging.info(
-            "  Among %d movable nodes, those with area larger than %d are selected"
+            "  Among %d movable nodes, those with area >= %d are selected"
             % (placedb.num_movable_nodes, large_movable_node_area_criterion)
         )
         sel_fx_n_id = np.array(
@@ -52,7 +52,7 @@ def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, floa
             ]
         )
         logging.info(
-            "  Among %d fixed nodes, those with area larger than %d are selected"
+            "  Among %d fixed nodes, those with area >= %d are selected"
             % (placedb.num_terminals, large_fixed_node_area_criterion)
         )
         mdl = make_lmn_model(placedb, sel_mv_n_id, sel_fx_n_id)
