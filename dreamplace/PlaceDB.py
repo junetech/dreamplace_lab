@@ -13,12 +13,11 @@ import sys
 import time
 
 import numpy as np
+import Params
 import torch
 
-import dreamplace
 import dreamplace.ops.fence_region.fence_region as fence_region
 import dreamplace.ops.place_io.place_io as place_io
-import Params
 
 datatypes = {"float32": np.float32, "float64": np.float64}
 

@@ -5,28 +5,23 @@
 # @brief  Placement model class defining the placement objective.
 #
 
-import os
-import sys
-import numpy as np
 import logging
+import os
+
+import numpy as np
 import torch
 import torch.nn as nn
-import pdb
 
-if sys.version_info[0] < 3:
-    import cPickle as pickle
-else:
-    import _pickle as pickle
-import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as weighted_average_wirelength
-import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
+import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
 import dreamplace.ops.density_overflow.density_overflow as density_overflow
+import dreamplace.ops.density_potential.density_potential as density_potential
 import dreamplace.ops.electric_potential.electric_overflow as electric_overflow
 import dreamplace.ops.electric_potential.electric_potential as electric_potential
-import dreamplace.ops.density_potential.density_potential as density_potential
-import dreamplace.ops.rudy.rudy as rudy
-import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization
+import dreamplace.ops.logsumexp_wirelength.logsumexp_wirelength as logsumexp_wirelength
 import dreamplace.ops.nctugr_binary.nctugr_binary as nctugr_binary
-import dreamplace.ops.adjust_node_area.adjust_node_area as adjust_node_area
+import dreamplace.ops.pin_utilization.pin_utilization as pin_utilization
+import dreamplace.ops.rudy.rudy as rudy
+import dreamplace.ops.weighted_average_wirelength.weighted_average_wirelength as weighted_average_wirelength
 
 
 class PreconditionOp:
@@ -393,10 +388,7 @@ class PlaceObj(nn.Module):
                 inner_density = self.op_collections.inner_fence_region_density_op(pos_w)
                 inner_density = (
                     inner_density
-                    + self.density_quad_coeff
-                    / 2
-                    / self.init_density
-                    * inner_density**2
+                    + self.density_quad_coeff / 2 / self.init_density * inner_density**2
                 )
             else:
                 inner_density = self.op_collections.inner_fence_region_density_op(pos_w)
@@ -417,10 +409,7 @@ class PlaceObj(nn.Module):
                 outer_density = self.op_collections.outer_fence_region_density_op(pos_w)
                 outer_density = (
                     outer_density
-                    + self.density_quad_coeff
-                    / 2
-                    / self.init_density
-                    * outer_density**2
+                    + self.density_quad_coeff / 2 / self.init_density * outer_density**2
                 )
             else:
                 outer_density = self.op_collections.outer_fence_region_density_op(pos_w)

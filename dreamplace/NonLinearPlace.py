@@ -9,23 +9,15 @@ import copy
 import inspect
 import logging
 import os
-import pickle
-import sys
 import time
-
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
-
-if sys.version_info[0] < 3:
-    import cPickle as pickle
-else:
-    import _pickle as pickle
 
 import BasicPlace
 import EvalMetrics
+import matplotlib.pyplot as plt
 import NesterovAcceleratedGradientOptimizer
+import numpy as np
 import PlaceObj
+import torch
 
 
 class NonLinearPlace(BasicPlace.BasicPlace):
@@ -685,9 +677,11 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         if Llambda_flat_iteration > 1:
                             model.op_collections.update_density_weight_op(
                                 Llambda_metrics[-1][-1],
-                                Llambda_metrics[-2][-1]
-                                if len(Llambda_metrics) > 1
-                                else Lgamma_metrics[-2][-1][-1],
+                                (
+                                    Llambda_metrics[-2][-1]
+                                    if len(Llambda_metrics) > 1
+                                    else Lgamma_metrics[-2][-1][-1]
+                                ),
                                 Llambda_flat_iteration,
                             )
                         # logging.debug("update density weight %.3f ms" % ((time.time()-t2)*1000))
