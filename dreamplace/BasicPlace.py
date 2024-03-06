@@ -30,7 +30,7 @@ import dreamplace.ops.independent_set_matching.independent_set_matching as indep
 import dreamplace.ops.k_reorder.k_reorder as k_reorder
 import dreamplace.ops.legality_check.legality_check as legality_check
 
-# import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
+import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
 import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize
 import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
@@ -329,7 +329,7 @@ class BasicPlace(nn.Module):
                 size=placedb.num_movable_nodes,
             )
 
-        # my_place
+        # my_place: set large nodes' positions
         x_dict, y_dict = do_initial_place(placedb)
         for node_idx in x_dict:
             self.init_pos[node_idx] = x_dict[node_idx]

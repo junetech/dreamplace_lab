@@ -87,14 +87,15 @@ class PlaceDrawer {
   bool run(std::string const& filename, FileFormat ff) const {
     dreamplacePrint(kINFO, "writing placement to %s\n", filename.c_str());
     bool flag = false;
+    int max_size = 2160;
 
     // PlaceDB const& placeDB = m_db.placeDB();
-    int width, height; 
+    int width, height;
     if (m_xh - m_xl < m_yh - m_yl) {
-      height = 800; 
-      width = round(height * (double)(m_xh - m_xl) / (m_yh - m_yl)); 
+      height = max_size;
+      width = round(height * (double)(m_xh - m_xl) / (m_yh - m_yl));
     } else {
-      width = 800; 
+      width = max_size;
       height = round(width * (double)(m_yh - m_yl) / (m_xh - m_xl));
     }
 
@@ -137,6 +138,7 @@ class PlaceDrawer {
     char buf[16];
     cairo_t* c;
     cairo_text_extents_t extents;
+    cairo_matrix_t font_reflection_matrix; // to mirror texts upside down
 
     c = cairo_create(cs);
     cairo_save(c);  // save status
@@ -184,6 +186,9 @@ class PlaceDrawer {
         if (m_content & NODETEXT) {
           sprintf(buf, "%u", i);
           cairo_set_font_size(c, m_node_size_y[i] / 20);
+          cairo_get_font_matrix(c, &font_reflection_matrix); // to mirror texts
+          font_reflection_matrix.yy = font_reflection_matrix.yy * -1; // upside
+          cairo_set_font_matrix(c, &font_reflection_matrix); // down
           cairo_text_extents(c, buf, &extents);
           cairo_move_to(c,
                         (m_x[i] + m_node_size_x[i] / 2) -
@@ -204,6 +209,9 @@ class PlaceDrawer {
         if (m_content & NODETEXT) {
           sprintf(buf, "%u", i);
           cairo_set_font_size(c, m_node_size_y[i] / 20);
+          cairo_get_font_matrix(c, &font_reflection_matrix); // to mirror texts
+          font_reflection_matrix.yy = font_reflection_matrix.yy * -1; // upside
+          cairo_set_font_matrix(c, &font_reflection_matrix); // down
           cairo_text_extents(c, buf, &extents);
           cairo_move_to(c,
                         (m_x[i] + m_node_size_x[i] / 2) -
@@ -224,6 +232,9 @@ class PlaceDrawer {
         if (m_content & NODETEXT) {
           sprintf(buf, "%u", i);
           cairo_set_font_size(c, m_node_size_y[i] / 20);
+          cairo_get_font_matrix(c, &font_reflection_matrix); // to mirror texts
+          font_reflection_matrix.yy = font_reflection_matrix.yy * -1; // upside
+          cairo_set_font_matrix(c, &font_reflection_matrix); // down
           cairo_text_extents(c, buf, &extents);
           cairo_move_to(c,
                         (m_x[i] + m_node_size_x[i] / 2) -
