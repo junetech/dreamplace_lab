@@ -329,6 +329,7 @@ class BasicPlace(nn.Module):
                 size=placedb.num_movable_nodes,
             )
 
+        # 이 파일에서는 import 한 줄과 이 부분만 달라야 함; 그런지 pull request에서 확인
         x_dict, y_dict = do_initial_place(placedb)
         for node_idx in x_dict:
             self.init_pos[node_idx] = x_dict[node_idx]
