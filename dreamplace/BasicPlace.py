@@ -36,6 +36,7 @@ import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.pin_weight_sum.pin_weight_sum as pws
 import dreamplace.ops.timing.timing as timing
+from dreamplace.InitPlaceSolver import do_initial_place # my_place
 
 
 class PlaceDataCollection(object):
@@ -163,7 +164,7 @@ class PlaceDataCollection(object):
             ).to(device)
             if len(placedb.regions) > 0:
                 # This is for multi-electric potential and legalization
-                # boxes defined as left-bottm point and top-right point
+                # boxes defined as left-bottom point and top-right point
                 self.virtual_macro_fence_region = [
                     torch.from_numpy(region).to(device)
                     for region in placedb.virtual_macro_fence_region
@@ -328,6 +329,12 @@ class BasicPlace(nn.Module):
                 size=placedb.num_movable_nodes,
             )
 
+        # my_place
+        x_dict, y_dict = do_initial_place(placedb)
+        for node_idx in x_dict:
+            self.init_pos[node_idx] = x_dict[node_idx]
+            self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
+
         if placedb.num_filler_nodes:  # uniformly distribute filler cells in the layout
             if len(placedb.regions) > 0:
                 ### uniformly spread fillers in fence region
@@ -418,7 +425,10 @@ class BasicPlace(nn.Module):
                     size=placedb.num_filler_nodes,
                 )
 
-        logging.debug("prepare init_pos takes %.2f seconds" % (time.time() - tt))
+        # my_place
+        init_pos_time = time.time() - tt
+        logging.debug("prepare init_pos takes %.2f seconds" % init_pos_time)
+        post_init_pos = time.time()
 
         self.device = torch.device("cuda" if params.gpu else "cpu")
 
@@ -492,6 +502,15 @@ class BasicPlace(nn.Module):
         self.read_lut_flag = True
 
         logging.debug("build BasicPlace ops takes %.2f seconds" % (time.time() - tt))
+
+        # my_place
+        logging.info(
+            f"Process: Initial placement took {init_pos_time:.3f} sec for init. positioning"
+        )
+        post_init_pos_time = time.time() - post_init_pos
+        logging.info(
+            f"Process: Initial placement took {post_init_pos_time:.3f} for post-init. pos."
+        )
 
     def __call__(self, params, placedb):
         """

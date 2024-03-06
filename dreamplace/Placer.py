@@ -43,7 +43,9 @@ def place(params):
     tt = time.time()
     placedb = PlaceDB.PlaceDB()
     placedb(params)
-    logging.info("reading database takes %.2f seconds" % (time.time() - tt))
+    proc_time = time.time() - tt
+    logging.info("reading database takes %.2f seconds" % (proc_time))
+    logging.info(f"Process: Input takes {proc_time:.3f} sec")
 
     # Read timing constraints provided in the benchmarks into out timing analysis
     # engine and then pass the timer into the placement core.
@@ -55,7 +57,8 @@ def place(params):
         # This must be done to explicitly execute the parser builders.
         # The parsers in OpenTimer are all in lazy mode.
         timer.update_timing()
-        logging.info("reading timer takes %.2f seconds" % (time.time() - tt))
+        proc_time = time.time() - tt
+        logging.info("reading timer takes %.2f seconds" % proc_time)
 
         # Dump example here. Some dump functions are defined.
         # Check instance methods defined in Timer.py for debugging.
@@ -65,11 +68,15 @@ def place(params):
     # solve placement
     tt = time.time()
     placer = NonLinearPlace.NonLinearPlace(params, placedb, timer)
-    logging.info(
-        "non-linear placement initialization takes %.2f seconds" % (time.time() - tt)
-    )
+    # my_place
+    proc_time = time.time() - tt
+    logging.info("non-linear placement initialization takes %.2f seconds" % proc_time)
+    logging.info(f"Process: Initial placement takes {proc_time:.3f} sec")
+
+    tt = time.time()
     metrics = placer(params, placedb)
-    logging.info("non-linear placement takes %.2f seconds" % (time.time() - tt))
+    proc_time = time.time() - tt
+    logging.info("non-linear placement optimization takes %.2f seconds" % proc_time)
 
     # write placement solution
     path = "%s/%s" % (params.result_dir, params.design_name())
@@ -108,9 +115,9 @@ def place(params):
             logging.info("%s" % (cmd))
             tt = time.time()
             os.system(cmd)
-            logging.info(
-                "External detailed placement takes %.2f seconds" % (time.time() - tt)
-            )
+            # my_place
+            proc_time = time.time() - tt
+            logging.info("External detailed placement takes %.2f seconds" % proc_time)
 
             if params.plot_flag:
                 # read solution and evaluate
@@ -161,9 +168,9 @@ def place(params):
             logging.info("%s" % (cmd))
             tt = time.time()
             os.system(cmd)
-            logging.info(
-                "External detailed placement takes %.2f seconds" % (time.time() - tt)
-            )
+            # my_place
+            proc_time = time.time() - tt
+            logging.info("External detailed placement takes %.2f seconds" % proc_time)
         else:
             logging.warning(
                 "External detailed placement only supports NTUplace3/NTUplace4dr API"
@@ -176,26 +183,33 @@ def place(params):
 
     return metrics
 
-    return metrics
-
 
 if __name__ == "__main__":
     """
     @brief main function to invoke the entire placement flow.
     """
-    logging.root.name = "DREAMPlace"
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(levelname)-7s] %(name)s - %(message)s",
-        stream=sys.stdout,
-    )
     params = Params.Params()
+
+    # my_place
+    # Log config
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    log_format = logging.Formatter("[%(levelname)-7s] %(name)s - %(message)s")
+    # Logging to a .log file
+    f_handler = logging.FileHandler(params.log_filename, encoding="utf-8")
+    f_handler.setFormatter(log_format)
+    root_logger.addHandler(f_handler)
+    # Show log messages on terminal as well
+    s_handler = logging.StreamHandler(sys.stdout)
+    s_handler.setFormatter(log_format)
+    root_logger.addHandler(s_handler)
+
     params.printWelcome()
     if len(sys.argv) == 1 or "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         params.printHelp()
         exit()
     elif len(sys.argv) != 2:
-        logging.error("One input parameters in json format in required")
+        logging.error("One input parameters in json format is required")
         params.printHelp()
         exit()
 
@@ -208,4 +222,5 @@ if __name__ == "__main__":
     # run placement
     tt = time.time()
     place(params)
-    logging.info("placement takes %.3f seconds" % (time.time() - tt))
+    proc_time = time.time() - tt
+    logging.info("placement takes %.3f seconds" % proc_time)

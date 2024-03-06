@@ -51,7 +51,6 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         if params.global_place_flag:
             # global placement may run in multiple stages according to user specification
             for global_place_params in params.global_place_stages:
-
                 # we formulate each stage as a 3-nested optimization problem
                 # f_gamma(g_density(h(x) ; density weight) ; gamma)
                 # Lgamma      Llambda        Lsub
@@ -77,6 +76,23 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     global_place_params,
                 ).to(self.data_collections.pos[0].device)
                 optimizer_name = global_place_params["optimizer"]
+
+                # Initial solution's quality
+                cur_metric = EvalMetrics.EvalMetrics(iteration)
+                cur_metric.evaluate(
+                    placedb,
+                    {
+                        "hpwl": self.op_collections.hpwl_op,
+                        "overflow": self.op_collections.density_overflow_op,
+                    },
+                    self.pos[0],
+                )
+                w_hpwl = cur_metric.hpwl
+                _str = f"Process: Initial placement has wHPWL of {w_hpwl}"
+                if cur_metric.overflow is not None:
+                    overflow = cur_metric.overflow[-1]
+                    _str += f" & overflow of {overflow}"
+                logging.info(_str)
 
                 # determine optimizer
                 if optimizer_name.lower() == "adam":
@@ -830,10 +846,18 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 # ):
                 #     all_metrics.append([best_metric])
 
+                # my_place
+                proc_time = time.time() - tt
                 logging.info(
-                    "optimizer %s takes %.3f seconds"
-                    % (optimizer_name, time.time() - tt)
+                    "optimizer %s takes %.3f seconds" % (optimizer_name, proc_time)
                 )
+                logging.info(f"Process: Global placement takes {proc_time:.3f} sec")
+                w_hpwl = best_metric[0].hpwl
+                _str = f"Process: Global placement has wHPWL of {w_hpwl}"
+                if best_metric[0].overflow is not None:
+                    overflow = best_metric[0].overflow[-1]
+                    _str += f" & overflow of {overflow}"
+                logging.info(_str)
 
             # recover node size and pin offset for legalization, since node size is adjusted in global placement
             if params.routability_opt_flag:
@@ -879,7 +903,12 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
-                placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
+                placedb,
+                {
+                    "hpwl": self.op_collections.hpwl_op,
+                    "overflow": self.op_collections.density_overflow_op, # my_place
+                },
+                self.pos[0],
             )
             logging.info(cur_metric)
 
@@ -902,12 +931,26 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         if params.legalize_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.legalize_op(self.pos[0]))
-            logging.info("legalization takes %.3f seconds" % (time.time() - tt))
+            proc_time = time.time() - tt
+            logging.info("legalization takes %.3f seconds" % proc_time)
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
-                placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
+                placedb,
+                {
+                    "hpwl": self.op_collections.hpwl_op,
+                    "overflow": self.op_collections.density_overflow_op, # my_place
+                },
+                self.pos[0],
             )
+            # my_place
+            logging.info(f"Process: Legalization takes {proc_time:.3f} sec")
+            w_hpwl = cur_metric.hpwl
+            _str = f"Process: Legalization has wHPWL of {w_hpwl}"
+            if cur_metric.overflow is not None:
+                overflow = cur_metric.overflow[-1]
+                _str += f" & overflow of {overflow}"
+            logging.info(_str)
 
             # perform an additional timing analysis on the legalized solution.
             # sta after legalization is not needed anymore.
@@ -952,13 +995,26 @@ class NonLinearPlace(BasicPlace.BasicPlace):
         if params.detailed_place_flag:
             tt = time.time()
             self.pos[0].data.copy_(self.op_collections.detailed_place_op(self.pos[0]))
-            logging.info("detailed placement takes %.3f seconds" % (time.time() - tt))
+            proc_time = time.time() - tt
+            logging.info("detailed placement takes %.3f seconds" % proc_time)
             cur_metric = EvalMetrics.EvalMetrics(iteration)
             all_metrics.append(cur_metric)
             cur_metric.evaluate(
-                placedb, {"hpwl": self.op_collections.hpwl_op}, self.pos[0]
+                placedb,
+                {
+                    "hpwl": self.op_collections.hpwl_op,
+                    "overflow": self.op_collections.density_overflow_op, # my_place
+                },
+                self.pos[0],
             )
             logging.info(cur_metric)
+            logging.info(f"Process: Detailed placement takes {proc_time:.3f} sec")
+            w_hpwl = cur_metric.hpwl
+            _str = f"Process: Detailed placement has wHPWL of {w_hpwl}"
+            if cur_metric.overflow is not None:
+                overflow = cur_metric.overflow[-1]
+                _str += f" & overflow of {overflow}"
+            logging.info(_str)
             iteration += 1
 
         # save results

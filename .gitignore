@@ -13,3 +13,8 @@ install
 *.so
 .DS_Store
 .vscode/*
+
+# development
+*.log
+*.xlsx
+.mypy_cache/

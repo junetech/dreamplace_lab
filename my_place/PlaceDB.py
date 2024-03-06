@@ -1,37 +1,21 @@
-##
-# @file   PlaceDB.py
-# @author Yibo Lin
-# @date   Apr 2018
-# @brief  placement database
-#
-
 import logging
 import math
 import os
-import re
-import sys
 import time
+from typing import Dict
 
 import numpy as np
-import Params
 import torch
 
-import dreamplace.ops.fence_region.fence_region as fence_region
-import dreamplace.ops.place_io.place_io as place_io
+from dreamplace.ops.fence_region import fence_region
+from dreamplace.ops.place_io import place_io
+from Params import Params
 
-datatypes = {"float32": np.float32, "float64": np.float64}
+DATATYPES = {"float32": np.float32, "float64": np.float64}
 
 
 class PlaceDB(object):
-    """
-    @brief placement database
-    """
-
     def __init__(self):
-        """
-        initialization
-        To avoid the usage of list, I flatten everything.
-        """
         self.rawdb = None  # raw placement database, a C++ object
         self.pydb = None  # python placement database interface
 
@@ -41,47 +25,55 @@ class PlaceDB(object):
             0  # number of terminal_NIs that can be overlapped, essentially IO pins
         )
         self.node_name2id_map = {}  # node name to id map, cell name
-        self.node_names = None  # 1D array, cell name
-        self.node_x = None  # 1D array, cell position x
-        self.node_y = None  # 1D array, cell position y
-        self.node_orient = None  # 1D array, cell orientation
-        self.node_size_x = None  # 1D array, cell width
-        self.node_size_y = None  # 1D array, cell height
+        self.node_names: np.array = None  # 1D array, cell name
+        self.node_x: np.array = None  # 1D array, cell position x
+        self.node_y: np.array = None  # 1D array, cell position y
+        self.node_orient: np.array = None  # 1D array, cell orientation
+        self.node_size_x: np.array = None  # 1D array, cell width
+        self.node_size_y: np.array = None  # 1D array, cell height
 
-        self.node2orig_node_map = None  # some fixed cells may have non-rectangular shapes; we flatten them and create new nodes
+        self.node2orig_node_map: np.array = (
+            None  # some fixed cells may have non-rectangular shapes; we flatten them and create new nodes
+        )
         # this map maps the current multiple node ids into the original one
 
-        self.pin_direct = None  # 1D array, pin direction IO
-        self.pin_offset_x = None  # 1D array, pin offset x to its node
-        self.pin_offset_y = None  # 1D array, pin offset y to its node
+        self.pin_direct: np.array = None  # 1D array, pin direction IO
+        self.pin_offset_x: np.array = None  # 1D array, pin offset x to its node
+        self.pin_offset_y: np.array = None  # 1D array, pin offset y to its node
 
-        self.net_name2id_map = {}  # net name to id map
-        self.net_names = None  # net name
-        self.net_weights = None  # weights for each net
+        self.net_name2id_map: Dict[str, int] = {}  # net name to id map
+        self.net_names: np.array = None  # net name
+        self.net_weights: np.array = None  # weights for each net
 
-        self.net2pin_map = None  # array of 1D array, each row stores pin id
-        self.flat_net2pin_map = None  # flatten version of net2pin_map
-        self.flat_net2pin_start_map = (
+        self.net2pin_map: np.array = None  # array of 1D array, each row stores pin id
+        self.flat_net2pin_map: np.array = None  # flatten version of net2pin_map
+        self.flat_net2pin_start_map: np.array = (
             None  # starting index of each net in flat_net2pin_map
         )
 
-        self.node2pin_map = None  # array of 1D array, contains pin id of each node
-        self.flat_node2pin_map = None  # flatten version of node2pin_map
-        self.flat_node2pin_start_map = (
+        self.node2pin_map: Dict[int, np.array] = (
+            None  # array of 1D array, contains pin id of each node
+        )
+        self.flat_node2pin_map: np.array = None  # flatten version of node2pin_map
+        self.flat_node2pin_start_map: np.array = (
             None  # starting index of each node in flat_node2pin_map
         )
 
-        self.pin2node_map = None  # 1D array, contain parent node id of each pin
-        self.pin2net_map = None  # 1D array, contain parent net id of each pin
+        self.pin2node_map: np.array = (
+            None  # 1D array, contain parent node id of each pin
+        )
+        self.pin2net_map: np.array = None  # 1D array, contain parent net id of each pin
 
-        self.rows = None  # NumRows x 4 array, stores xl, yl, xh, yh of each row
+        self.rows: np.array = (
+            None  # NumRows x 4 array, stores xl, yl, xh, yh of each row
+        )
 
         self.regions = None  # array of 1D array, placement regions like FENCE and GUIDE
-        self.flat_region_boxes = None  # flat version of regions
-        self.flat_region_boxes_start = (
+        self.flat_region_boxes: np.array = None  # flat version of regions
+        self.flat_region_boxes_start: np.array = (
             None  # start indices of regions, length of num regions + 1
         )
-        self.node2fence_region_map = (
+        self.node2fence_region_map: np.array = (
             None  # map cell to a region, maximum integer if no fence region
         )
 
@@ -516,32 +508,12 @@ class PlaceDB(object):
         """
         logging.debug("row %d %s" % (row_id, self.rows[row_id]))
 
-    # def flatten_nested_map(self, net2pin_map):
-    #    """
-    #    @brief flatten an array of array to two arrays like CSV format
-    #    @param net2pin_map array of array
-    #    @return a pair of (elements, cumulative column indices of the beginning element of each row)
-    #    """
-    #    # flat netpin map, length of #pins
-    #    flat_net2pin_map = np.zeros(len(pin2net_map), dtype=np.int32)
-    #    # starting index in netpin map for each net, length of #nets+1, the last entry is #pins
-    #    flat_net2pin_start_map = np.zeros(len(net2pin_map)+1, dtype=np.int32)
-    #    count = 0
-    #    for i in range(len(net2pin_map)):
-    #        flat_net2pin_map[count:count+len(net2pin_map[i])] = net2pin_map[i]
-    #        flat_net2pin_start_map[i] = count
-    #        count += len(net2pin_map[i])
-    #    assert flat_net2pin_map[-1] != 0
-    #    flat_net2pin_start_map[len(net2pin_map)] = len(pin2net_map)
-
-    #    return flat_net2pin_map, flat_net2pin_start_map
-
-    def read(self, params):
+    def read(self, params: Params):
         """
         @brief read using c++
         @param params parameters
         """
-        self.dtype = datatypes[params.dtype]
+        self.dtype = DATATYPES[params.dtype]
         self.rawdb = place_io.PlaceIOFunction.read(params)
         self.initialize_from_rawdb(params)
 
@@ -731,7 +703,7 @@ class PlaceDB(object):
             self.num_bins_x = params.num_bins_x
             self.num_bins_y = params.num_bins_y
 
-    def __call__(self, params):
+    def __call__(self, params: Params):
         """
         @brief top API to read placement files
         @param params parameters
@@ -838,7 +810,7 @@ class PlaceDB(object):
             np.sum(fence_region_mask.astype(np.float32)),
         )
 
-    def initialize(self, params):
+    def initialize(self, params: Params):
         """
         @brief initialize data members after reading
         @param params parameters
@@ -868,7 +840,7 @@ class PlaceDB(object):
         self.scale(params.shift_factor, params.scale_factor)
 
         content = """
-================================= Benchmark Statistics =================================
+=============================== Benchmark Statistics ===============================
 #nodes = %d, #terminals = %d, # terminal_NIs = %d, #movable = %d, #nets = %d
 die area = (%g, %g, %g, %g) %g
 row height = %g, site width = %g
@@ -1199,7 +1171,7 @@ row height = %g, site width = %g
         )
 
         if params.routability_opt_flag:
-            content += "================================== routing information =================================\n"
+            content += "=" * 33 + " routing information " + "=" * 34 + "\n"
             content += "routing grids (%d, %d)\n" % (
                 self.num_routing_grids_x,
                 self.num_routing_grids_y,
@@ -1212,7 +1184,7 @@ row height = %g, site width = %g
                 self.unit_horizontal_capacity * self.routing_grid_size_y,
                 self.unit_vertical_capacity * self.routing_grid_size_x,
             )
-        content += "========================================================================================"
+        content += "=" * 88
 
         logging.info(content)
 
@@ -1246,7 +1218,6 @@ row height = %g, site width = %g
             place_io.PlaceIOFunction.write(
                 self.rawdb, filename, sol_file_format, node_x, node_y
             )
-        # my_place
         proc_time = time.time() - tt
         logging.info("write %s takes %.3f seconds" % (str(sol_file_format), proc_time))
         logging.info(f"Process: Output takes {proc_time:.3f} sec")
@@ -1367,19 +1338,3 @@ row height = %g, site width = %g
 
         # update raw database
         place_io.PlaceIOFunction.apply(self.rawdb, node_x, node_y)
-
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        logging.error("One input parameters in json format in required")
-
-    params = Params.Params()
-    params.load(sys.argv[sys.argv[1]])
-    logging.info("parameters = %s" % (params))
-
-    db = PlaceDB()
-    db(params)
-
-    db.print_node(1)
-    db.print_net(1)
-    db.print_row(1)
