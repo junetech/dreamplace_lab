@@ -93,6 +93,14 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     overflow = cur_metric.overflow[-1]
                     _str += f" & overflow of {overflow}"
                 logging.info(_str)
+                # plot initial placement result
+                self.plot(
+                    params,
+                    placedb,
+                    iteration,
+                    self.pos[0].data.clone().cpu().numpy(),
+                    suffix="IP",
+                )
 
                 # determine optimizer
                 if optimizer_name.lower() == "adam":
@@ -906,7 +914,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 placedb,
                 {
                     "hpwl": self.op_collections.hpwl_op,
-                    "overflow": self.op_collections.density_overflow_op, # my_place
+                    "overflow": self.op_collections.density_overflow_op,  # my_place
                 },
                 self.pos[0],
             )
@@ -921,10 +929,14 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 "%s.lg.pklz" % (params.design_name()),
             )
 
-        # plot placement
+        # plot global placement result
         if params.plot_flag:
             self.plot(
-                params, placedb, iteration, self.pos[0].data.clone().cpu().numpy()
+                params,
+                placedb,
+                iteration,
+                self.pos[0].data.clone().cpu().numpy(),
+                suffix="GP",
             )
 
         # legalization
@@ -939,7 +951,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 placedb,
                 {
                     "hpwl": self.op_collections.hpwl_op,
-                    "overflow": self.op_collections.density_overflow_op, # my_place
+                    "overflow": self.op_collections.density_overflow_op,  # my_place
                 },
                 self.pos[0],
             )
@@ -976,10 +988,14 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             logging.info(cur_metric)
             iteration += 1
 
-        # plot placement
+        # plot legalization result
         if params.plot_flag:
             self.plot(
-                params, placedb, iteration, self.pos[0].data.clone().cpu().numpy()
+                params,
+                placedb,
+                iteration,
+                self.pos[0].data.clone().cpu().numpy(),
+                suffix="LG",
             )
 
         # dump legalization solution for detailed placement
@@ -1003,7 +1019,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                 placedb,
                 {
                     "hpwl": self.op_collections.hpwl_op,
-                    "overflow": self.op_collections.density_overflow_op, # my_place
+                    "overflow": self.op_collections.density_overflow_op,  # my_place
                 },
                 self.pos[0],
             )
@@ -1025,7 +1041,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
             cur_pos[0 : placedb.num_movable_nodes],
             cur_pos[placedb.num_nodes : placedb.num_nodes + placedb.num_movable_nodes],
         )
-        # plot placement
+        # plot detailed placement result
         if params.plot_flag:
-            self.plot(params, placedb, iteration, cur_pos)
+            self.plot(params, placedb, iteration, cur_pos, suffix="DP")
         return all_metrics

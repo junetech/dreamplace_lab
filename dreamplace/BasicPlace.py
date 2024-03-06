@@ -36,7 +36,7 @@ import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
 import dreamplace.ops.pin_weight_sum.pin_weight_sum as pws
 import dreamplace.ops.timing.timing as timing
-from dreamplace.InitPlaceSolver import do_initial_place # my_place
+from dreamplace.InitPlaceSolver import do_initial_place  # my_place
 
 
 class PlaceDataCollection(object):
@@ -1307,7 +1307,7 @@ class BasicPlace(nn.Module):
         # return hpwl, rmst_wl, overflow, max_density
         return hpwl, overflow, max_density
 
-    def plot(self, params, placedb, iteration, pos):
+    def plot(self, params, placedb, iteration, pos, suffix=""):
         """
         @brief plot layout
         @param params parameters
@@ -1317,7 +1317,14 @@ class BasicPlace(nn.Module):
         """
         tt = time.time()
         path = "%s/%s" % (params.result_dir, params.design_name())
-        figname = "%s/plot/iter%s.png" % (path, "{:04}".format(iteration))
+        if suffix:
+            figname = "%s/plot/iter%s_%s.png" % (
+                path,
+                "{:04}".format(iteration),
+                suffix,
+            )
+        else:
+            figname = "%s/plot/iter%s.png" % (path, "{:04}".format(iteration))
         os.system("mkdir -p %s" % (os.path.dirname(figname)))
         if isinstance(pos, np.ndarray):
             pos = torch.from_numpy(pos)
