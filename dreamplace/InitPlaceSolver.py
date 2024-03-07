@@ -4,13 +4,14 @@ from typing import Dict, List, Tuple
 
 import cvxpy as cp
 import numpy as np
+import numpy.typing as npt
 
 from dreamplace.LaplacianCalc import calc_laplacian
 from dreamplace.PlaceDB import PlaceDB
 
 
 class MyProb(cp.Problem):
-    mv_n_id: np.array
+    mv_n_id: npt.NDArray[np.int32]
     x: cp.Variable
     y: cp.Variable
 
@@ -25,10 +26,13 @@ def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, floa
     sel_mv_n_id = np.array(
         [
             n_id
-            for n_id in np.array([n_id for n_id in range(placedb.num_movable_nodes)])
+            for n_id in np.array(
+                [n_id for n_id in range(placedb.num_movable_nodes)], dtype=np.int32
+            )
             if placedb.node_size_x[n_id] * placedb.node_size_y[n_id]
             >= large_movable_node_area_criterion
-        ]
+        ],
+        dtype=np.int32,
     )
     if sel_mv_n_id.size > 0:
         logging.info(
@@ -45,17 +49,19 @@ def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, floa
                             placedb.num_movable_nodes,
                             placedb.num_movable_nodes + placedb.num_terminals,
                         )
-                    ]
+                    ],
+                    dtype=np.int32,
                 )
                 if placedb.node_size_x[n_id] * placedb.node_size_y[n_id]
                 >= large_fixed_node_area_criterion
-            ]
+            ],
+            dtype=np.int32,
         )
         logging.info(
             "  Among %d fixed nodes, those with area >= %d are selected"
             % (placedb.num_terminals, large_fixed_node_area_criterion)
         )
-        mdl = make_lmn_model(placedb, sel_mv_n_id, sel_fx_n_id)
+        mdl = make_qp_model(placedb, sel_mv_n_id, sel_fx_n_id)
         logging.info(
             f"Initial-placing large nodes: math model building takes {datetime.datetime.now() - s_dt} sec."
         )
@@ -71,33 +77,35 @@ def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, floa
         )
         x_dict, y_dict = {}, {}
 
-    # initialize (x,y) of small movable nodes utilizing math model
-
     return x_dict, y_dict
 
 
-def make_lmn_model(placedb: PlaceDB, sel_mv_n_id, sel_fx_n_id) -> MyProb:
+def make_qp_model(
+    placedb: PlaceDB,
+    mv_n_id: npt.NDArray[np.int32],
+    fx_n_id: npt.NDArray[np.int32],
+) -> MyProb:
     s_dt = datetime.datetime.now()
 
     # Index definition
 
     # selected subset of movable nodes
-    m_node_count = sel_mv_n_id.size
+    m_node_count = mv_n_id.size
     # node width & height
     n_wth, n_hgt = placedb.node_size_x, placedb.node_size_y
 
     # selected subset of movable and fixed pins
     sel_mv_p_id = np.concatenate(
-        [placedb.node2pin_map[n_id] for n_id in sel_mv_n_id], axis=None
+        [placedb.node2pin_map[n_id] for n_id in mv_n_id], axis=None
     )
     m_pin_count = sel_mv_p_id.size
     sel_fx_p_id = np.concatenate(
-        [placedb.node2pin_map[n_id] for n_id in sel_fx_n_id], axis=None
+        [placedb.node2pin_map[n_id] for n_id in fx_n_id], axis=None
     )
     f_pin_count = sel_fx_p_id.size
     logging.info(f"Index definition takes {datetime.datetime.now()-s_dt}"[:-3])
     logging.info(
-        "  Selected %d large fixed nodes have %d pins" % (sel_fx_n_id.size, f_pin_count)
+        "  Selected %d large fixed nodes have %d pins" % (fx_n_id.size, f_pin_count)
     )
     logging.info(
         "  Selected %d large movable nodes have %d pins" % (m_node_count, m_pin_count)
@@ -112,15 +120,15 @@ def make_lmn_model(placedb: PlaceDB, sel_mv_n_id, sel_fx_n_id) -> MyProb:
     xpo, ypo = placedb.pin_offset_x, placedb.pin_offset_y
     # Position of fixed pins
     _xp_f, _yp_f = [], []
-    for n_id in sel_fx_n_id:
+    for n_id in fx_n_id:
         _xp_f.extend(
             [placedb.node_x[n_id] + xpo[p_id] for p_id in placedb.node2pin_map[n_id]]
         )
         _yp_f.extend(
             [placedb.node_y[n_id] + ypo[p_id] for p_id in placedb.node2pin_map[n_id]]
         )
-    xp_f = np.array(_xp_f)
-    yp_f = np.array(_yp_f)
+    xp_f = np.array(_xp_f, dtype=np.int32)
+    yp_f = np.array(_yp_f, dtype=np.int32)
 
     p_prime_set = np.concatenate((sel_mv_p_id, sel_fx_p_id), axis=None)
     pin_id2idx_map = {p_id: idx for idx, p_id in enumerate(p_prime_set)}
@@ -156,12 +164,12 @@ def make_lmn_model(placedb: PlaceDB, sel_mv_n_id, sel_fx_n_id) -> MyProb:
 
     # Constraints
     constrs: List[cp.Constraint] = []
-    # for n_idx, n_id in enumerate(sel_mv_n_id):
+    # for n_idx, n_id in enumerate(mv_n_id):
     #     for p_id in placedb.node2pin_map[n_id]:
     #         p_idx = pin_id2idx_map[p_id]
     #         constrs.append(xn_m[n_idx] + xpo[p_id] == xp_m[p_idx])
     #         constrs.append(yn_m[n_idx] + ypo[p_id] == yp_m[p_idx])
-    for n_idx, n_id in enumerate(sel_mv_n_id):
+    for n_idx, n_id in enumerate(mv_n_id):
         constrs.extend(
             [
                 xn_m[n_idx] + xpo[p_id] == xp_m[pin_id2idx_map[p_id]]
@@ -172,7 +180,7 @@ def make_lmn_model(placedb: PlaceDB, sel_mv_n_id, sel_fx_n_id) -> MyProb:
                 for p_id in placedb.node2pin_map[n_id]
             ]
         )
-    for n_idx, n_id in enumerate(sel_mv_n_id):
+    for n_idx, n_id in enumerate(mv_n_id):
         constrs.extend(
             [
                 xn_m[n_idx] >= 0,
@@ -199,7 +207,7 @@ def make_lmn_model(placedb: PlaceDB, sel_mv_n_id, sel_fx_n_id) -> MyProb:
     logging.info(f"Objective definition takes {datetime.datetime.now()-s_dt}"[:-3])
     s_dt = datetime.datetime.now()
 
-    prob.mv_n_id = sel_mv_n_id
+    prob.mv_n_id = mv_n_id
     prob.x, prob.y = xn_m, yn_m
     return prob
 
