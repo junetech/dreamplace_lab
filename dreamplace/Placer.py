@@ -5,27 +5,27 @@
 # @brief  Main file to run the entire placement flow.
 #
 
-import matplotlib
-
-matplotlib.use("Agg")
+import datetime
 import logging
 import os
 import sys
 import time
+import traceback
 
+import matplotlib
 import numpy as np
 
+matplotlib.use("Agg")
 # for consistency between python2 and python3
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 
+import dreamplace.configure as configure
 import NonLinearPlace
 import Params
 import PlaceDB
 import Timer
-
-import dreamplace.configure as configure
 
 
 def place(params):
@@ -188,39 +188,51 @@ if __name__ == "__main__":
     """
     @brief main function to invoke the entire placement flow.
     """
-    params = Params.Params()
+    try:
+        start_dt = datetime.datetime.now()
+        params = Params.Params()
 
-    # my_place
-    # Log config
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-    log_format = logging.Formatter("[%(levelname)-7s] %(name)s - %(message)s")
-    # Logging to a .log file
-    f_handler = logging.FileHandler(params.log_filename, encoding="utf-8")
-    f_handler.setFormatter(log_format)
-    root_logger.addHandler(f_handler)
-    # Show log messages on terminal as well
-    s_handler = logging.StreamHandler(sys.stdout)
-    s_handler.setFormatter(log_format)
-    root_logger.addHandler(s_handler)
+        # my_place
+        # Log config
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        log_format = logging.Formatter("[%(levelname)-7s] %(name)s - %(message)s")
+        # Logging to a .log file
+        f_handler = logging.FileHandler(params.log_filename, encoding="utf-8")
+        f_handler.setFormatter(log_format)
+        root_logger.addHandler(f_handler)
+        # Show log messages on terminal as well
+        s_handler = logging.StreamHandler(sys.stdout)
+        s_handler.setFormatter(log_format)
+        root_logger.addHandler(s_handler)
 
-    params.printWelcome()
-    if len(sys.argv) == 1 or "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
-        params.printHelp()
-        exit()
-    elif len(sys.argv) != 2:
-        logging.error("One input parameters in json format is required")
-        params.printHelp()
-        exit()
+        params.printWelcome()
+        if len(sys.argv) == 1 or "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
+            params.printHelp()
+            exit()
+        elif len(sys.argv) != 2:
+            logging.error("One input parameters in json format is required")
+            params.printHelp()
+            exit()
 
-    # load parameters
-    params.load(sys.argv[1])
-    logging.info("parameters = %s" % (params))
-    # control numpy multithreading
-    os.environ["OMP_NUM_THREADS"] = "%d" % (params.num_threads)
+        logging.info(f"{__name__} program start @ {start_dt}"[:-3])
 
-    # run placement
-    tt = time.time()
-    place(params)
-    proc_time = time.time() - tt
-    logging.info("placement takes %.3f seconds" % proc_time)
+        # load parameters
+        params.load(sys.argv[1])
+        logging.info("parameters = %s" % (params))
+        # control numpy multithreading
+        os.environ["OMP_NUM_THREADS"] = "%d" % (params.num_threads)
+
+        # run placement
+        tt = time.time()
+        place(params)
+        proc_time = time.time() - tt
+        logging.info("placement takes %.3f seconds" % proc_time)
+
+        end_dt = datetime.datetime.now()
+        elapsed_d = end_dt - start_dt
+        logging.info(
+            f"{__name__} program end @ {end_dt}"[:-3] + f"; took total {elapsed_d}"[:-3]
+        )
+    except:
+        logging.error(traceback.format_exc())
