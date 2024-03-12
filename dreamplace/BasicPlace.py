@@ -30,7 +30,7 @@ import dreamplace.ops.independent_set_matching.independent_set_matching as indep
 import dreamplace.ops.k_reorder.k_reorder as k_reorder
 import dreamplace.ops.legality_check.legality_check as legality_check
 
-import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
+# import dreamplace.ops.rmst_wl.rmst_wl as rmst_wl
 import dreamplace.ops.macro_legalize.macro_legalize as macro_legalize
 import dreamplace.ops.move_boundary.move_boundary as move_boundary
 import dreamplace.ops.pin_pos.pin_pos as pin_pos
