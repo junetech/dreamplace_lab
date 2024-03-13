@@ -94,13 +94,14 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                     _str += f" & overflow of {overflow}"
                 logging.info(_str)
                 # plot initial placement result
-                self.plot(
-                    params,
-                    placedb,
-                    iteration,
-                    self.pos[0].data.clone().cpu().numpy(),
-                    suffix="IP",
-                )
+                if params.plot_flag:
+                    self.plot(
+                        params,
+                        placedb,
+                        iteration,
+                        self.pos[0].data.clone().cpu().numpy(),
+                        suffix="IP",
+                    )
 
                 # determine optimizer
                 if optimizer_name.lower() == "adam":
