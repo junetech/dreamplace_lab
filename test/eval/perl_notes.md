@@ -11,6 +11,9 @@
   Total HPWL: 73171427
   ```
 
+  - 모든 net weight가 1임을 가정하고 단순합
+  - scaled HPWL 값이 아님
+
 ### 수정 사항
 
 - Line 287: 출력 형태 수정. Logic에 영향 X
