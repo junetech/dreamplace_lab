@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 
-# 02/28/2005 Gi-Joon: modification to reflect un-aligned row configuration 
+# 02/28/2005 Gi-Joon: modification to reflect un-aligned row configuration
 #                     with RowDBstartX & RowDBendX array
- 
+
 # Written by Gi-Joon Nam (gnam@us.ibm.com) on Jan 2005
 # usage: legal.pl <nodes> <input.pl> <solution.pl> <scl> <row_num>
 #        This perl script checks the following conditions
@@ -12,9 +12,9 @@
 #        3. whether there is any overlap among objects (ERROR Type3)
 #
 # <row_num> defines legality-checking row window sizes (# of rows)
-# i.e., window = (image_hx - image_lx) X ROW_JUMP 
+# i.e., window = (image_hx - image_lx) X ROW_JUMP
 
-$DEFAULT_ROW_HEIGHT = 12; 
+$DEFAULT_ROW_HEIGHT = 12;
 
 %ObjectDB;
 @AreaMap;
@@ -36,7 +36,7 @@ $s_file = $ARGV[3];
 $r_num  = $ARGV[4];
 
 if (!defined($n_file) || !defined($i_file) || !defined($p_file) || !defined($s_file)) {
-    print "Usage: check_legalality.pl <NODE file> <PL file> <Solution PL file> <SCL file> <Row_num>\n";
+    print "Usage: check_legality.pl <NODE file> <initial PL file> <solution PL file> <SCL file> <Row_num>\n";
     exit(0);
 }
 
@@ -60,7 +60,7 @@ open (EFILE, ">legality.error") || die "I can't open legality.error\n";
 # scl file processing
 ###########################
 $num_processed_rows = 0;
-$row_height = $DEFAULT_ROW_HEIGHT; 
+$row_height = $DEFAULT_ROW_HEIGHT;
 while (defined($line = <SFILE>)) {
     $line =~ s/^\s+//; # removes front/end white spaces
     $line =~ s/\s+$//;
@@ -79,8 +79,8 @@ while (defined($line = <SFILE>)) {
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
-	# Keyword: Coordinate 
+
+	# Keyword: Coordinate
 	if ($words[0] eq "Coordinate") {
 	    $row_y = $words[2];
 	}
@@ -90,13 +90,13 @@ while (defined($line = <SFILE>)) {
 	    my_exit();
 	}
 	push(@RowDB, $row_y);
-	
+
 	# Keyword: Height
 	$line = <SFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	$prev_row_height=$row_height;
 	if ($words[0] eq "Height") {
 	    $row_height = $words[2];
@@ -112,13 +112,13 @@ while (defined($line = <SFILE>)) {
 	    print       "ERROR: Row Height mismatch: $prev_row_height vs $row_height\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Sitewidth
 	$line = <SFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Sitewidth") {
 	    $site_width = $words[2];
 	}
@@ -127,13 +127,13 @@ while (defined($line = <SFILE>)) {
 	    print       "ERROR: CoreRow Processing: Sitewidth keyword not found\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Sitespacing
 	$line = <SFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Sitespacing") {
 	    $site_width = $words[2];
 	}
@@ -142,13 +142,13 @@ while (defined($line = <SFILE>)) {
 	    print       "ERROR: CoreRow Processing: Sitespacing keyword not found\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Siteorient
 	$line = <SFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Siteorient") {
 	    $site_orient = $words[2];
 	}
@@ -157,13 +157,13 @@ while (defined($line = <SFILE>)) {
 	    print       "ERROR: CoreRow Processing: Siteorient keyword not found. $words[0] $words[1]\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Sitesymmetry
 	$line = <SFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Sitesymmetry") {
 	    $site_width = $words[2];
 	}
@@ -172,13 +172,13 @@ while (defined($line = <SFILE>)) {
 	    print       "ERROR: CoreRow Processing: Sitesymmetry keyword not found. $words[0] $words[1]\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: SubrowOrigin
 	$line = <SFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "SubrowOrigin") {
 	    $row_x = $words[2];
 	    $row_num_sites = $words[5];
@@ -190,19 +190,19 @@ while (defined($line = <SFILE>)) {
 	    print       "ERROR: CoreRow Processing: SubrowOrigin keyword not found\n";
 	    my_exit();
 	}
-	
+
 	# Keyword; End
 	$line = <SFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] ne "End") {
 	    print EFILE "ERROR: Keyword End is expected. $words[0] shows up\n";
 	    print       "ERROR: Keyword End is expected. $words[0] shows up\n";
 	    my_exit();
 	}
-	
+
 	if ($WINDOW_LX > $row_x) {
 	    $WINDOW_LX = $row_x;
 	}
@@ -215,8 +215,8 @@ while (defined($line = <SFILE>)) {
 	if ($WINDOW_HY < $row_y + $row_height) {
 	    $WINDOW_HY = $row_y + $row_height;
 	}
-	
-	$num_processed_rows++; 
+
+	$num_processed_rows++;
     }
 }
 close(SFILE);
@@ -257,7 +257,7 @@ while (defined($line = <NFILE>)) {
 	print "NumNodes: $num_obj_from_file NumTerminals: $num_term_from_file\n";
 	next;
     }
-    
+
     $name = $words[0];
     $dx   = $words[1];
     $dy   = $words[2];
@@ -296,13 +296,13 @@ while (defined($line = <IFILE>)) {
     $name = $words[0];
     $locx = $words[1];
     $locy = $words[2];
-  
+
     if (!defined($ObjectDB{$name})) {
 	print EFILE "ERROR: In PL file, undefined object $name appears\n";
 	print       "ERROR: In PL file, undefined object $name appears\n";
 	my_exit();
     }
-    
+
     $move_type = ${$ObjectDB{$name}}[$TYPEINDEX];
     if ($move_type eq "terminal") {
 	$num_terminal++;
@@ -327,7 +327,7 @@ $num_obj = 0;
 $num_terminal = 0;
 while (defined($line = <PFILE>)) {
     my @tmpRecord;
-    
+
     $line =~ s/^\s+//; # removes front/end white spaces
     $line =~ s/\s+$//;
     @words = split(/\s+/, $line);
@@ -337,7 +337,7 @@ while (defined($line = <PFILE>)) {
 	# skip comment line or UCLA line or empty line
 	next;
     }
-    
+
     $name = $words[0];
     $locx = $words[1];
     $locy = $words[2];
@@ -358,10 +358,10 @@ while (defined($line = <PFILE>)) {
 	    $ErrorDB[0] += 1;
 	}
     }
-    
+
     ${$ObjectDB{$name}}[$LOCXINDEX] = $locx;
     ${$ObjectDB{$name}}[$LOCYINDEX] = $locy;
-    
+
     $num_obj++;
 }
 close(PFILE);
@@ -379,10 +379,10 @@ foreach $key (keys (%ObjectDB)) {
     $dx = ${$ObjectDB{$key}}[$DXINDEX];
     $dy = ${$ObjectDB{$key}}[$DYINDEX];
     $move_type = ${$ObjectDB{$key}}[$TYPEINDEX];
-    
+
     $hx = $lx + $dx - 1;
     $hy = $ly + $dy - 1;
-    
+
     if ($lx > $WINDOW_HX || $hx < $WINDOW_LX ||
 	$ly > $WINDOW_HY || $hy < $WINDOW_LY) {
 	if ($move_type eq "terminal") {
@@ -398,7 +398,7 @@ foreach $key (keys (%ObjectDB)) {
 	# Row start x to end x checking
 	$hy = $ly + $dy;
 	$row_id_l = ($ly - $RowDB[0]) / $row_height;
-	$int_row_id = int (($ly - $RowDB[0]) / $row_height);	
+	$int_row_id = int (($ly - $RowDB[0]) / $row_height);
 	if ($row_id_l != $int_row_id) {
 	    print EFILE "ERROR Type2: $key (movable) NOT aligned to row boundary dy=$dy row_id=$row_id_l\n";
 	    #$ErrorDB[2] += 1;
@@ -428,7 +428,7 @@ print "Phase 3: Type1 Checking is done with $ErrorDB[1] errors.\n";
 print "         Total $num_obj objects have been visited\n";
 
 ##########################################################################
-# ErrorType2 & 3 Checking: 
+# ErrorType2 & 3 Checking:
 # 1) whether an object is aligned to row boundary (Type2)
 # 2) whether there is any overlap among objects   (Type3)
 # checking windows is ($WINDOW_HX - $WINDOW_LX) x $ROW_JUMP rows at a time
@@ -444,7 +444,7 @@ for ($map_row_start = 0; $map_row_start < $num_rows; $map_row_start += $ROW_JUMP
 	    @{$AreaMap[$x][$c_row]} = (); # flush array
 	}
     }
-    
+
     $num_obj = 0;
     foreach $key (keys (%ObjectDB)) {
 	$lx = ${$ObjectDB{$key}}[$LOCXINDEX];
@@ -452,26 +452,26 @@ for ($map_row_start = 0; $map_row_start < $num_rows; $map_row_start += $ROW_JUMP
 	$dx = ${$ObjectDB{$key}}[$DXINDEX];
 	$dy = ${$ObjectDB{$key}}[$DYINDEX];
 	$move_type = ${$ObjectDB{$key}}[$TYPEINDEX];
-	
+
 	$hx = $lx + $dx - 1;
 	$hy = $ly + $dy;     # wrong version: $hy = $ly + $dy - 1;
-	
+
 	if ($lx > $WINDOW_HX || $hx < $WINDOW_LX ||
 	    $ly > $WINDOW_HY || $hy < $WINDOW_LY) {
 	    next;
 	}
-	
+
 	$yfactor = $dy / $row_height;
 	$row_id_l = ($ly - $RowDB[0]) / $row_height;
 	$row_id_h = ($hy - $RowDB[0]) / $row_height;
 
-	$int_row_id = int (($ly - $RowDB[0]) / $row_height);	
+	$int_row_id = int (($ly - $RowDB[0]) / $row_height);
 	if ($row_id_l != $int_row_id) {
 	    print EFILE "ERROR Type2: $key NOT aligned to row boundary dy=$dy row_id=$row_id_l\n";
 	    $ErrorDB[2] += 1;
 	    #my_exit(0);
 	}
-	$int_row_id = int (($hy - $RowDB[0]) / $row_height);	
+	$int_row_id = int (($hy - $RowDB[0]) / $row_height);
 	if ($row_id_h != $int_row_id) {
 	    print EFILE "ERROR Type2: $key NOT aligned to row boundary dy=$dy row_id=$row_id_h\n";
 	    $ErrorDB[2] += 1;
@@ -489,17 +489,17 @@ for ($map_row_start = 0; $map_row_start < $num_rows; $map_row_start += $ROW_JUMP
 	if ($row_id_h < $ROW_JUMP) {
 	    $this_row_end = $row_id_h;
 	}
-	
+
 	for ($this_row = $this_row_start; $this_row <= $this_row_end; $this_row++) {
 	    for $x ($lx..$hx) {
 		if (($x >= $WINDOW_LX) && ($x <= $WINDOW_HX)) {
 		    my @tmpArray;
-		    
+
 		    push (@{$AreaMap[$x][$this_row]}, \$key);
 		    @tmpArray = @{$AreaMap[$x][$this_row]};
 		    @tmpArray + 0;
 		    $array_size = scalar(@tmpArray);
-		    
+
 		    if ($array_size > 1) {
 			$ErrorDB[3] += 1;
 			@obj_name = @{$AreaMap[$x][$this_row]};
@@ -517,7 +517,7 @@ for ($map_row_start = 0; $map_row_start < $num_rows; $map_row_start += $ROW_JUMP
 				print EFILE "NULL ";
 				print       "NULL ";
 			    }
-			} 
+			}
 			print EFILE "\n";
 			print       "\n";
 			#my_exit();

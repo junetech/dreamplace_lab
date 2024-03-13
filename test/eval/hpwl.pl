@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl
 
 # Written by Gi-Joon Nam (gnam@us.ibm.com) on Jan 2005
 # usage : hpwl.pl <nodefile> <init.pl> <solution.pl> <net>
@@ -30,7 +30,7 @@ $LOCYINDEX=3;
 #####################################################################
 # Node file processing
 # For each object, store dx, dy, lx and ly. lx and ly will be updated
-#     when solution PL file is processed. 
+#     when solution PL file is processed.
 #####################################################################
 $num_obj = 0;
 $num_terminal = 0;
@@ -225,13 +225,13 @@ while (defined($line = <NETFILE>)) {
 
   $NetDB{$this_net_name} = $index_net;
   $index_net++;
-  
+
   $this_net_wl = 0;
   $this_net_lx = 100000000;
   $this_net_ly = 100000000;
   $this_net_hx = -1;
   $this_net_hy = -1;
-  
+
   for ($i = 0; $i < $this_num_pin; $i++) {
       $line = <NETFILE>;
       $line =~ s/^\s+//; # removes front/end white spaces
@@ -284,7 +284,8 @@ while (defined($line = <NETFILE>)) {
 close(NETFILE);
 print "Phase 3: Net file processing is done.\n";
 print "         Total $num_net nets $num_pin pins.\n";
-print "         Total HPWL: $total_wl ($f_sol)\n";
+print "         Total HPWL: $total_wl\n";
+print "         ($f_sol)\n";
 
 sub my_exit {
   print "Abnormal condition happened. Exit\n";

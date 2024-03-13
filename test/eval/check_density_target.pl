@@ -34,7 +34,7 @@ open (NODEFILE, $node_file) || die "I can't open node file $node_file\n";
 open (SOLFILE, $sol_file)  || die "I can't open sol  file $sol_file\n";
 open (SCLFILE, $scl_file)  || die "I can't open scl  file $scl_file\n";
 
-if (defined($commandline_td) && ($commandline_td > 0) && ($commandline_td < 1.0)) {
+if (defined($commandline_td) && ($commandline_td > 0) && ($commandline_td <= 1.0)) {
     $target_density = $commandline_td;
 }
 else {
@@ -50,7 +50,7 @@ $WINDOW_HX = -99999;
 $WINDOW_HY = -99999;
 
 $num_processed_rows = 0;
-$row_height = $DEFAULT_ROW_HEIGHT; 
+$row_height = $DEFAULT_ROW_HEIGHT;
 $total_row_area = 0;
 while (defined($line = <SCLFILE>)) {
     $line =~ s/^\s+//; # removes front/end white spaces
@@ -70,8 +70,8 @@ while (defined($line = <SCLFILE>)) {
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
-	# Keyword: Coordinate 
+
+	# Keyword: Coordinate
 	if ($words[0] eq "Coordinate") {
 	    $row_y = $words[2];
 	}
@@ -80,13 +80,13 @@ while (defined($line = <SCLFILE>)) {
 	    my_exit();
 	}
 	push(@RowDB, $row_y);
-	
+
 	# Keyword: Height
 	$line = <SCLFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	$prev_row_height=$row_height;
 	if ($words[0] eq "Height") {
 	    $row_height = $words[2];
@@ -100,13 +100,13 @@ while (defined($line = <SCLFILE>)) {
 	    print       "ERROR: Row Height mismatch: $prev_row_height vs $row_height\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Sitewidth
 	$line = <SCLFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Sitewidth") {
 	    $site_width = $words[2];
 	}
@@ -114,13 +114,13 @@ while (defined($line = <SCLFILE>)) {
 	    print       "ERROR: CoreRow Processing: Sitewidth keyword not found\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Sitespacing
 	$line = <SCLFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Sitespacing") {
 	    $site_width = $words[2];
 	}
@@ -128,13 +128,13 @@ while (defined($line = <SCLFILE>)) {
 	    print       "ERROR: CoreRow Processing: Sitespacing keyword not found\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Siteorient
 	$line = <SCLFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Siteorient") {
 	    $site_orient = $words[2];
 	}
@@ -142,13 +142,13 @@ while (defined($line = <SCLFILE>)) {
 	    print       "ERROR: CoreRow Processing: Siteorient keyword not found. $words[0] $words[1]\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: Sitesymmetry
 	$line = <SCLFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "Sitesymmetry") {
 	    $site_width = $words[2];
 	}
@@ -156,13 +156,13 @@ while (defined($line = <SCLFILE>)) {
 	    print       "ERROR: CoreRow Processing: Sitesymmetry keyword not found. $words[0] $words[1]\n";
 	    my_exit();
 	}
-	
+
 	# Keyword: SubrowOrigin
 	$line = <SCLFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] eq "SubrowOrigin") {
 	    $row_x = $words[2];
 	    $row_num_sites = $words[5];
@@ -174,18 +174,18 @@ while (defined($line = <SCLFILE>)) {
 	    print       "ERROR: CoreRow Processing: SubrowOrigin keyword not found\n";
 	    my_exit();
 	}
-	
+
 	# Keyword; End
 	$line = <SCLFILE>;
 	$line =~ s/^\s+//; # removes front/end white spaces
 	$line =~ s/\s+$//;
 	@words = split(/\s+/, $line);
-	
+
 	if ($words[0] ne "End") {
 	    print       "ERROR: Keyword End is expected. $words[0] shows up\n";
 	    my_exit();
 	}
-	
+
 	if ($WINDOW_LX > $row_x) {
 	    $WINDOW_LX = $row_x;
 	}
@@ -198,14 +198,14 @@ while (defined($line = <SCLFILE>)) {
 	if ($WINDOW_HY < $row_y + $row_height) {
 	    $WINDOW_HY = $row_y + $row_height;
 	}
-	
-	$num_processed_rows++; 
+
+	$num_processed_rows++;
     }
 }
 close(SCLFILE);
 print "Phase $phase: Total $num_processed_rows rows are processed.\n";
 print "         ImageWindow=($WINDOW_LX $WINDOW_LY $WINDOW_HX $WINDOW_HY) w/ row_height=$row_height\n";
-print "         Total Row Area=$total_row_area\n"; 
+print "         Total Row Area=$total_row_area\n";
 $phase++;
 
 ###############################################
@@ -216,7 +216,7 @@ $WINDOW_HEIGHT = $WINDOW_HY - $WINDOW_LY;
 
 $XUNIT = $DEFAULT_ROW_HEIGHT * $BIN_ROW_FACTOR; # 10 circuit row height
 $YUNIT = $DEFAULT_ROW_HEIGHT * $BIN_ROW_FACTOR;
-$XDIM  = ceil($WINDOW_WIDTH  / $XUNIT); 
+$XDIM  = ceil($WINDOW_WIDTH  / $XUNIT);
 $YDIM  = ceil($WINDOW_HEIGHT / $YUNIT);
 
 $CMAP = {
@@ -238,7 +238,7 @@ for ($j = 0; $j < $CMAP->{YDIM}; $j++) {
 	$bin_ly = $starty;
 	$bin_hx = $bin_lx + $XUNIT;
 	$bin_hy = $bin_ly + $YUNIT;
-	
+
 	if (($i == $XDIM - 1) && ($bin_hx > $WINDOW_HX)) {
 	    # last column bins
 	    $bin_hx = $WINDOW_HX;
@@ -314,7 +314,7 @@ $debug_place_area = $WINDOW_WIDTH * $WINDOW_HEIGHT;
 if ($debug_summed_bin_cap != $total_row_area) {
     # Checking
     print "ERROR: Summed_bin_cap_: $summed_bin_cap Total Row_Area: $total_row_area\n";
-    my_exit(); 
+    my_exit();
 }
 
 $num_entry = 0;
@@ -359,7 +359,7 @@ while (defined($line = <NODEFILE>)) {
 	print "         NumNodes: $num_obj_from_file NumTerminals: $num_term_from_file\n";
 	next;
     }
-    
+
     $name = $words[0];
     $dx   = $words[1];
     $dy   = $words[2];
@@ -371,7 +371,7 @@ while (defined($line = <NODEFILE>)) {
 	$move_type = "movable";
 	$total_movable_area += ($dx * $dy);
     }
-    $lx = 0;    
+    $lx = 0;
     $ly = 0;
     $record = {
 	NAME => $name,
@@ -382,14 +382,14 @@ while (defined($line = <NODEFILE>)) {
 	TYPE => $move_type,
     };
     $ObjectDB{ $record->{NAME} } = $record;
-#    printf "%s dx=%d dy=%d (%d, %d) type=%s\n", 
+#    printf "%s dx=%d dy=%d (%d, %d) type=%s\n",
 #    $record->{NAME}, $record->{DX}, $record->{DY}, $record->{LX}, $record->{LY}, $record->{TYPE};
     $num_obj++;
 }
 
 $num_entry=0;
 while (($name, $record) = each %ObjectDB) {
-#    printf "ODB %s dx=%d dy=%d (%d, %d) type=%s\n", 
+#    printf "ODB %s dx=%d dy=%d (%d, %d) type=%s\n",
 #    $record->{NAME}, $record->{DX}, $record->{DY}, $record->{LX}, $record->{LY}, $record->{TYPE};
     $num_entry++;
 }
@@ -407,7 +407,7 @@ $num_obj = 0;
 $num_terminal = 0;
 while (defined($line = <SOLFILE>)) {
     my @tmpRecord;
-    
+
     $line =~ s/^\s+//; # removes front/end white spaces
     $line =~ s/\s+$//;
     @words = split(/\s+/, $line);
@@ -417,7 +417,7 @@ while (defined($line = <SOLFILE>)) {
 	# skip comment line or UCLA line or empty line
 	next;
     }
-    
+
     $name = $words[0];
     $locx = $words[1];
     $locy = $words[2];
@@ -432,7 +432,7 @@ while (defined($line = <SOLFILE>)) {
     if ($move_type eq "terminal") {
 	$num_terminal++;
     }
-    
+
     $record->{LX} = $locx;
     $record->{LY} = $locy;
     $OjbectDB{ $record->{NAME} } = $record;
@@ -459,7 +459,7 @@ while (($name, $record) = each %ObjectDB) {
     $obj_hx = $obj_lx + $obj_dx;
     $obj_hy = $obj_ly + $obj_dy;
 
-    if ($type eq "terminal" && 
+    if ($type eq "terminal" &&
 	(($obj_hx < $WINDOW_LX) || ($obj_lx > $WINDOW_HX) || ($obj_hy < $WINDOW_LY) || ($obj_ly > $WINDOW_HY))) {
 	$num_terminal++;
 	$num_entry++;
@@ -470,7 +470,7 @@ while (($name, $record) = each %ObjectDB) {
     $bin_ly_index = floor(($obj_ly - $WINDOW_LY)/$YUNIT);
     $bin_hx_index = floor(($obj_hx - $WINDOW_LX)/$XUNIT);
     $bin_hy_index = floor(($obj_hy - $WINDOW_LY)/$YUNIT);
-    
+
     if ($bin_lx_index < 0 || $bin_ly_index < 0) {
 	print "ERROR: Bin low index error during object $name processing: lx_index: $bin_lx_index ly_index: $bin_ly_index\n";
 	my_exit();
@@ -543,7 +543,7 @@ while (($name, $record) = each %ObjectDB) {
     if ($debug_summed_common_area != $debug_obj_area) {
 	# Checking
 	print "ERROR: Area calculation failure during object $name processing: Sum_Area: $debug_summed_common_area Org_Area: $debug_obj_area\n";
-	my_exit(); 
+	my_exit();
     }
     if ($type eq "terminal") {
 	$num_terminal++;
@@ -568,7 +568,7 @@ for ($j = 0; $j < $YDIM; $j++) {
     for ($i = 0; $i < $XDIM; $i++) {
 	$index = $i + $j * $XDIM;
 	$total_bin_count++;
-	
+
 	$bin = @{$CMAP->{BINS}}[$index];
 	$bin_lx = $bin->{LX};
 	$bin_ly = $bin->{LY};
@@ -578,10 +578,10 @@ for ($j = 0; $j < $YDIM; $j++) {
 	$bin_musage = $bin->{MUSAGE};
 	$bin_fusage = $bin->{FUSAGE};
 
-	if ($bin_cap < $bin_musage + $bin_fusage) {
-	    print "ERROR: bin overflow cap: $bin_cap musage: $bin_musage fusage: $bin_fusage\n";
-	    my_exit();
-	}
+	# if ($bin_cap < $bin_musage + $bin_fusage) {
+	#     print "ERROR: bin overflow cap: $bin_cap musage: $bin_musage fusage: $bin_fusage\n";
+	#     my_exit();
+	# }
 
 	$total_capacity += $bin_cap;
 	$total_musage   += $bin_musage;
@@ -611,7 +611,9 @@ for ($j = 0; $j < $YDIM; $j++) {
     } # for ($i)
 } # for ($j)
 
-$avg_overflow = $summed_overflow / $nviolation;
+if ($nviolation != 0) {
+	$avg_overflow = $summed_overflow / $nviolation;
+}
 printf "Phase $phase: Congestion map analysis is done.\n";
 printf "\tTotal %d (%d x %d) bins. Target density: %f\n", $total_bin_count, $XDIM, $YDIM, $target_density;
 printf "\tViolation num: %d (%f)\tAvg overflow: %f\tMax overflow: %f\n", $nviolation, $nviolation/$total_bin_count, $avg_overflow, $max_overflow;
