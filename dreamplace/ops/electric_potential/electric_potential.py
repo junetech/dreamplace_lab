@@ -168,19 +168,24 @@ class ElectricPotentialFunction(Function):
             wu2_plus_wv2[0, 0] = 1.0  # avoid zero-division, it will be zeroed out
             inv_wu2_plus_wv2 = 1.0 / wu2_plus_wv2
             inv_wu2_plus_wv2[0, 0] = 0.0
+            # \frac{w_u}{w_u^2+w_v^2}
             wu_by_wu2_plus_wv2_half = wu.mul(inv_wu2_plus_wv2).mul_(1.0 / 2)
             wv_by_wu2_plus_wv2_half = wv.mul(inv_wu2_plus_wv2).mul_(1.0 / 2)
 
         # compute auv
         density_map.mul_(1.0 / (ctx.bin_size_x * ctx.bin_size_y))
 
+        # my_place: equation (21) on page 12 of ePlace paper
         # auv = discrete_spectral_transform.dct2_2N(density_map, expk0=exact_expkM, expk1=exact_expkN)
         auv = dct2.forward(density_map)
 
         # compute field xi
+        # my_place: coefficient in equation (24-1); \frac{a_{u,v}w_u}{w_u^2+w_v^2}
         auv_by_wu2_plus_wv2_wu = auv.mul(wu_by_wu2_plus_wv2_half)
+        # my_place: coefficient in equation (24-2); \frac{a_{u,v}w_v}{w_u^2+w_v^2}
         auv_by_wu2_plus_wv2_wv = auv.mul(wv_by_wu2_plus_wv2_half)
 
+        # my_place: equation (24)
         # ctx.field_map_x = discrete_spectral_transform.idsct2(auv_by_wu2_plus_wv2_wu, exact_expkM, exact_expkN).contiguous()
         ctx.field_map_x = idxst_idct.forward(auv_by_wu2_plus_wv2_wu)
         # ctx.field_map_y = discrete_spectral_transform.idcst2(auv_by_wu2_plus_wv2_wv, exact_expkM, exact_expkN).contiguous()
@@ -193,6 +198,7 @@ class ElectricPotentialFunction(Function):
             energy = torch.zeros(1, dtype=pos.dtype, device=pos.device)
         else:
             # compute potential phi
+            # my_place: equation (23)
             # auv / (wu**2 + wv**2)
             auv_by_wu2_plus_wv2 = auv.mul(inv_wu2_plus_wv2)
             # potential_map = discrete_spectral_transform.idcct2(auv_by_wu2_plus_wv2, exact_expkM, exact_expkN)

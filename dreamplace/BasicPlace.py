@@ -55,6 +55,7 @@ class PlaceDataCollection(object):
         self.device = device
         torch.set_num_threads(params.num_threads)
         # position should be parameter
+        # my_place: southwest corner of each node
         self.pos = pos
 
         with torch.no_grad():
@@ -312,7 +313,7 @@ class BasicPlace(nn.Module):
                 loc=(placedb.xl * 1.0 + placedb.xh * 1.0) / 2,
                 scale=(placedb.xh - placedb.xl) * 0.001,
                 size=placedb.num_movable_nodes,
-            )
+            )  # TODO my_place: subtract half of the node width to center-align
 
         # y position
         self.init_pos[
@@ -327,13 +328,13 @@ class BasicPlace(nn.Module):
                 loc=(placedb.yl * 1.0 + placedb.yh * 1.0) / 2,
                 scale=(placedb.yh - placedb.yl) * 0.001,
                 size=placedb.num_movable_nodes,
-            )
+            )  # TODO my_place: subtract half of the node height to center-align
 
-        # my_place: set large nodes' positions
-        x_dict, y_dict = do_initial_place(placedb)
-        for node_idx in x_dict:
-            self.init_pos[node_idx] = x_dict[node_idx]
-            self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
+        # # my_place: set large nodes' positions
+        # x_dict, y_dict = do_initial_place(placedb)
+        # for node_idx in x_dict:
+        #     self.init_pos[node_idx] = x_dict[node_idx]
+        #     self.init_pos[placedb.num_nodes + node_idx] = y_dict[node_idx]
 
         if placedb.num_filler_nodes:  # uniformly distribute filler cells in the layout
             if len(placedb.regions) > 0:

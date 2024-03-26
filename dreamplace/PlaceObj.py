@@ -332,6 +332,7 @@ class PlaceObj(nn.Module):
         if len(self.placedb.regions) > 0:
             self.density = self.op_collections.fence_region_density_merged_op(pos)
         else:
+            # TODO my_place: 이 함수의 x값을 x + offset(half of node dimension)으로 바꿔야 함
             self.density = self.op_collections.density_op(pos)
 
         if self.init_density is None:
@@ -810,6 +811,7 @@ class PlaceObj(nn.Module):
             delta=2.0,
         )
 
+    # my_place: equation (14) in ePlace paper
     def build_electric_potential(
         self,
         params,

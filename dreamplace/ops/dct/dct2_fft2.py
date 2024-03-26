@@ -98,7 +98,7 @@ class IDCT2(nn.Module):
         if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
             self.buf = torch.empty(M, N // 2 + 1, 2, dtype=x.dtype, device=x.device)
-
+        # TODO my_place: 이 함수의 x값을 x + offset(half of node dimension)으로 바꿔야 함
         return IDCT2Function.apply(x, self.expkM, self.expkN, self.out, self.buf)
 
 
@@ -180,5 +180,5 @@ class IDXST_IDCT(nn.Module):
         if self.out is None:
             self.out = torch.empty(M, N, dtype=x.dtype, device=x.device)
             self.buf = torch.empty(M, N // 2 + 1, 2, dtype=x.dtype, device=x.device)
-
+        # TODO my_place: 이 함수의 x값을 x + offset(half of node dimension)으로 바꿔야 함
         return IDXST_IDCTFunction.apply(x, self.expkM, self.expkN, self.out, self.buf)
