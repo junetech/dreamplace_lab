@@ -358,6 +358,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         "sgd_momentum",
                         "sgd_nesterov",
                     ]:
+                        # my_place: objective & gradient are calculated here
+                        # line 453 in PlaceObj.py
                         obj, grad = model.obj_and_grad_fn(pos)
                         cur_metric.objective = obj.data.clone()
                     elif optimizer_name.lower() != "nesterov":

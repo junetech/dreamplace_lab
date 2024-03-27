@@ -53,6 +53,7 @@ class ElectricDensityMapFunction(Function):
     @param sorted_node_map the indices of the movable node map
     """
 
+    # TODO my_place: pos를 pos_center로 바꾸기
     @staticmethod
     def forward(
         pos,

@@ -262,6 +262,7 @@ class PlaceObj(nn.Module):
             params, placedb, self.data_collections, self.num_bins_x, self.num_bins_y
         )
 
+        # my_place: build_electric_potential @ line 815
         self.op_collections.density_op = self.build_electric_potential(
             params,
             placedb,
@@ -332,7 +333,8 @@ class PlaceObj(nn.Module):
         if len(self.placedb.regions) > 0:
             self.density = self.op_collections.fence_region_density_merged_op(pos)
         else:
-            # TODO my_place: 이 함수의 x값을 x + offset(half of node dimension)으로 바꿔야 함
+            # my_place: coordinate-wise density calc function is defined here
+            # self.op_collections.density_op(pos) is defined in line 265
             self.density = self.op_collections.density_op(pos)
 
         if self.init_density is None:
@@ -460,8 +462,10 @@ class PlaceObj(nn.Module):
         # self.check_gradient(pos)
         if pos.grad is not None:
             pos.grad.zero_()
+        # my_place: objective function is calculated here
+        # line 324
         obj = self.obj_fn(pos)
-
+        # my_place: gradient is calculated by nn.Module.backward method
         obj.backward()
 
         self.op_collections.precondition_op(
@@ -877,6 +881,7 @@ class PlaceObj(nn.Module):
             if fence_regions is None
             else placedb.target_density_fence_region[region_id]
         )
+        # my_place: ElectricPotential.forward @ line 617 of electric_potential.py
         return electric_potential.ElectricPotential(
             node_size_x=data_collections.node_size_x,
             node_size_y=data_collections.node_size_y,

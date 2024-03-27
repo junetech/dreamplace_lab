@@ -17,7 +17,7 @@ class MyProb(cp.Problem):
 
 
 def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, float]]:
-    # TODO: define these values outside the code
+    # TODO my_place: define these values outside the code
     large_movable_node_area_criterion = 10000
     large_fixed_node_area_criterion = 10000
 

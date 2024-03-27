@@ -84,9 +84,10 @@ class ElectricPotentialFunction(Function):
     ):
 
         tt = time.time()
+        # TODO my_place: make pos_center by center-aligning pos
 
         density_map = ElectricDensityMapFunction.forward(
-            pos,
+            pos,  # TODO my_place: replace by pos_center
             node_size_x_clamped,
             node_size_y_clamped,
             offset_x,
@@ -141,7 +142,7 @@ class ElectricPotentialFunction(Function):
         ctx.num_filler_impacted_bins_x = num_filler_impacted_bins_x
         ctx.num_filler_impacted_bins_y = num_filler_impacted_bins_y
         ctx.deterministic_flag = deterministic_flag
-        ctx.pos = pos
+        ctx.pos = pos  # TODO my_place: replace by pos_center
         ctx.sorted_node_map = sorted_node_map
         # density_map = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
         # ctx.field_map_x = torch.ones([ctx.num_bins_x, ctx.num_bins_y], dtype=pos.dtype, device=pos.device)
@@ -671,14 +672,18 @@ class ElectricPotential(ElectricOverflow):
             # expk
             M = self.num_bins_x
             N = self.num_bins_y
+            # my_place: Euler's equation form of exponent in line 11 of Algorithm 2 in DREAMPlace
             self.exact_expkM = precompute_expk(M, dtype=pos.dtype, device=pos.device)
             self.exact_expkN = precompute_expk(N, dtype=pos.dtype, device=pos.device)
 
             # init dct2, idct2, idct_idxst, idxst_idct with expkM and expkN
+            # my_place: function for electric potential
             self.dct2 = dct.DCT2(self.exact_expkM, self.exact_expkN)
             if not self.fast_mode:
                 self.idct2 = dct.IDCT2(self.exact_expkM, self.exact_expkN)
+            # my_place: function for x-axis electric field
             self.idct_idxst = dct.IDCT_IDXST(self.exact_expkM, self.exact_expkN)
+            # my_place: function for y-axis electric field
             self.idxst_idct = dct.IDXST_IDCT(self.exact_expkM, self.exact_expkN)
 
             # wu and wv
@@ -702,6 +707,7 @@ class ElectricPotential(ElectricOverflow):
             self.wv_by_wu2_plus_wv2_half = wv.mul(self.inv_wu2_plus_wv2).mul_(1.0 / 2)
 
         if mode == "density":
+            # my_place: ElectricPotentialFunction.forward @ line 44
             return ElectricPotentialFunction.apply(
                 pos,
                 self.node_size_x_clamped,
