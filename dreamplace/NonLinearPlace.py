@@ -370,6 +370,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
                         self.plot(params, placedb, iteration, cur_pos)
 
+                    # my_place: go one optimization step
                     #### stop updating fence regions that are marked stop, exclude the outer cell !
                     t3 = time.time()
                     if model.update_mask is not None:
