@@ -102,6 +102,7 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         self.pos[0].data.clone().cpu().numpy(),
                         suffix="IP",
                     )
+                raise UserWarning
 
                 # determine optimizer
                 if optimizer_name.lower() == "adam":
