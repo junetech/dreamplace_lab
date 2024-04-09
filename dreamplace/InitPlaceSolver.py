@@ -18,7 +18,7 @@ class MyProb(cp.Problem):
 def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, float]]:
     s_dt = datetime.datetime.now()
     # TODO: define these values outside the code
-    large_node_portion = 0.0001
+    large_node_portion = 0.01
 
     # largest movable nodes
     large_node_count = np.ceil(placedb.num_movable_nodes * large_node_portion).astype(
@@ -132,7 +132,7 @@ def make_qp_model(
 ) -> MyProb:
     s_dt = datetime.datetime.now()
 
-    # Index & parameter definition
+    # Index definition
     # node count
     m_node_count = placedb.num_movable_nodes
     f_node_count = placedb.num_terminals
@@ -149,20 +149,20 @@ def make_qp_model(
     # Virtual pin definition
     mv_vp_count, fx_vp_count = 0, 0  # count of all virtual pins created
 
-    # N_0 -> cal{P}_m^0 \cup cal{P}_f^0: node ID -> list of virtual pin ID
+    # \cal{P}^0(n): node ID -> list of virtual pin ID
     vp_id_dict: dict[int, list[int]] = {}
-    # cal{P}_m^0 \cup cal{P}_f^0 -> N_0
+    # N <- \cal{P}^0
     _vpin2node_map = []
-    # P_m^0 \cup P_f^0 -> cal{P}_m^0 \cup cal{P}_f^0: original pin ID -> virtual pin ID
+    # f(p): original pin ID -> virtual pin ID
     pin2vpin_map = np.zeros(placedb.num_pins, dtype=np.int32)
     # list of virtual pin offset
     _vpin_offset_x: list[float] = []
     _vpin_offset_y: list[float] = []
 
-    # create vp_id_dict & pin2vpin_map
     def pin_into_vpin(
-        n_id_array: npt.NDArray[np.int32], large_n_id_set: set[int], vp_count: int
-    ):
+        n_id_array: npt.NDArray[np.int32], large_n_id_set: set[int], vp_start: int
+    ) -> int:
+        vp_count = vp_start
         for n_id in n_id_array:
             original_pin_list = node2pin_map[n_id]
             original_pin_count = len(original_pin_list)
@@ -248,11 +248,11 @@ def make_qp_model(
                     vpin_stat.large_node_many_pins_count += 1
                     vpin_stat.large_node_many_original_pin_count += original_pin_count
                     vpin_stat.large_node_many_vpin_count += len(vp_id_list)
+        return vp_count
 
     vpin_stat = VPinStat()
-    pin_into_vpin(mv_n_id_array, large_mv_n_id_set, mv_vp_count)
-    total_vp_count = mv_vp_count
-    pin_into_vpin(fx_n_id_array, large_fx_n_id_set, total_vp_count)
+    mv_vp_count = pin_into_vpin(mv_n_id_array, large_mv_n_id_set, 0)
+    total_vp_count = pin_into_vpin(fx_n_id_array, large_fx_n_id_set, mv_vp_count)
     fx_vp_count = total_vp_count - mv_vp_count
 
     vpin2node_map = np.array(_vpin2node_map, dtype=np.int32)
@@ -264,40 +264,56 @@ def make_qp_model(
     logging.info("  Total %d virtual pins defined" % (total_vp_count))
     vpin_stat.create_log()
 
-    # Virtual net definition
-    # cal{P}_m^1 \cup cal{P}_f^1 <- E^1
+    # Net reduction
+    # \cal{P} <- \cal{E}
     simple_graph, npe = create_simple_graph(
         mv_vp_count, fx_vp_count, placedb.net2pin_map, pin2vpin_map
     )
-    # N^1
-    npe.create_selected_node_set(vpin2node_map)
+    # \cal{P}
+    m_pin_count = len(npe.mv_vp_id_set)
+    p_id_array = np.array(
+        sorted(npe.mv_vp_id_set.union(npe.fx_vp_id_set)), dtype=np.int32
+    )
+    pin_id2idx_map = {p_id: idx for idx, p_id in enumerate(p_id_array)}
+    # Node reduction
+    # \cal{N}^m, \cal{N}^f, \cal{P}(n)
+    npe.select_nodes_with_vpins(vp_id_dict, vpin2node_map)
+    # \cal{N}^m
+    mv_n_id_array = np.array(sorted(npe.mv_n_id_set), dtype=np.int32)
+    m_node_count = len(mv_n_id_array)
+    # \cal{N}^f
+    fx_n_id_array = np.array(sorted(npe.fx_n_id_set), dtype=np.int32)
+    # \cal{P}(n)
+    vp_id_array_dict: dict[int, npt.NDArray[np.int32]] = {
+        n_id: np.array(sorted(npe.vp_id_dict[n_id]), dtype=np.int32)
+        for n_id in npe.vp_id_dict
+    }
+
     logging.info(f"Virtual net definition takes {datetime.datetime.now()-s_dt}"[:-3])
     s_dt = datetime.datetime.now()
-    raise UserWarning
+
+    # Parameter definition start
+    # Block area
+    block_wth, block_hgt = placedb.xh - placedb.xl, placedb.yh - placedb.yl
 
     # Position of fixed pins
-    _xp_f = []
     _xp_f, _yp_f = [], []
     for n_id in fx_n_id_array:
         _xp_f.extend(
             [
                 placedb.node_x[n_id] + vpin_offset_x[p_id]
-                for p_id in vp_id_dict[n_id]
-                if p_id in fx_vp_id_set
+                for p_id in vp_id_array_dict[n_id]
             ]
         )
         _yp_f.extend(
             [
                 placedb.node_y[n_id] + vpin_offset_y[p_id]
-                for p_id in vp_id_dict[n_id]
-                if p_id in fx_vp_id_set
+                for p_id in vp_id_array_dict[n_id]
             ]
         )
     xp_f = np.array(_xp_f, dtype=np.float32)
     yp_f = np.array(_yp_f, dtype=np.float32)
 
-    # block area
-    block_wth, block_hgt = placedb.xh - placedb.xl, placedb.yh - placedb.yl
     logging.info(
         f"Parameter definition before Laplacian takes {datetime.datetime.now()-s_dt}"[
             :-3
@@ -306,7 +322,7 @@ def make_qp_model(
     s_dt = datetime.datetime.now()
 
     # Create Laplacian matrix with pins
-    L_matrix = calc_vpin_laplacian(vp_count, placedb.net2pin_map, pin2vpin_map)
+    L_matrix = calc_vpin_laplacian(simple_graph, p_id_array)
     L_mm = L_matrix[0:m_pin_count, 0:m_pin_count]
     L_fm = L_matrix[m_pin_count:, 0:m_pin_count]
     L_ff = L_matrix[m_pin_count:, m_pin_count:]
@@ -328,23 +344,18 @@ def make_qp_model(
 
     # Constraints
     constrs: List[cp.Constraint] = []
-    # for n_idx, n_id in enumerate(mv_n_id):
-    #     for p_id in placedb.node2pin_map[n_id]:
-    #         p_idx = pin_id2idx_map[p_id]
-    #         constrs.append(xn_m[n_idx] + xpo[p_id] == xp_m[p_idx])
-    #         constrs.append(yn_m[n_idx] + ypo[p_id] == yp_m[p_idx])
-    for n_idx, n_id in enumerate(mv_n_id):
+    for n_idx, n_id in enumerate(mv_n_id_array):
         constrs.extend(
             [
-                xn_m[n_idx] + xpo[p_id] == xp_m[pin_id2idx_map[p_id]]
-                for p_id in placedb.node2pin_map[n_id]
+                xn_m[n_idx] + vpin_offset_x[p_id] == xp_m[pin_id2idx_map[p_id]]
+                for p_id in vp_id_array_dict[n_id]
             ]
             + [
-                yn_m[n_idx] + ypo[p_id] == yp_m[pin_id2idx_map[p_id]]
-                for p_id in placedb.node2pin_map[n_id]
+                yn_m[n_idx] + vpin_offset_y[p_id] == yp_m[pin_id2idx_map[p_id]]
+                for p_id in vp_id_array_dict[n_id]
             ]
         )
-    for n_idx, n_id in enumerate(mv_n_id):
+    for n_idx, n_id in enumerate(mv_n_id_array):
         constrs.extend(
             [
                 xn_m[n_idx] >= 0,
@@ -371,7 +382,7 @@ def make_qp_model(
     logging.info(f"Objective definition takes {datetime.datetime.now()-s_dt}"[:-3])
     s_dt = datetime.datetime.now()
 
-    prob.mv_n_id = mv_n_id
+    prob.mv_n_id = mv_n_id_array
     prob.x, prob.y = xn_m, yn_m
     return prob
 

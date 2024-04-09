@@ -12,18 +12,28 @@ class NodePinnEt:
     dummy_pin_count: int
 
     def __init__(self):
-        # cal{P}_m^1: set of pins in movable nodes selected
+        # cal{P}^m: set of pins in movable nodes selected
         self.mv_vp_id_set: set[int] = set()
-        # cal{P}_f^1: set of pins in fixed nodes selected
+        # cal{P}^f: set of pins in fixed nodes selected
         self.fx_vp_id_set: set[int] = set()
         # E^1: set of nets selected
         self.net_id_set: set[int] = set()
 
-    def create_selected_node_set(self, vpin2node_map: npt.NDArray[np.int32]):
-        # N_m^1: set of movable nodes selected
+    def select_nodes_with_vpins(
+        self, vp_id_dict: dict[int, list[int]], vpin2node_map: npt.NDArray[np.int32]
+    ):
+        # \cal{N}^m: set of movable nodes selected
         self.mv_n_id_set: set[int] = set(vpin2node_map[list(self.mv_vp_id_set)])
-        # N_f^1: set of fixed nodes selected
+
+        # \cal{N}^f: set of fixed nodes selected
         self.fx_n_id_set: set[int] = set(vpin2node_map[list(self.fx_vp_id_set)])
+
+        # \cal{P}(n): node -> set of vpins
+        self.vp_id_dict: dict[int, set[int]] = {}
+        n_id_set = self.mv_n_id_set.union(self.fx_n_id_set)
+        vp_id_set = self.mv_vp_id_set.union(self.fx_vp_id_set)
+        for n_id in n_id_set:
+            self.vp_id_dict[n_id] = vp_id_set.intersection(vp_id_dict[n_id])
 
 
 def create_simple_graph(
@@ -64,16 +74,12 @@ def create_simple_graph(
                     npe.mv_vp_id_set.add(u)
                 else:
                     npe.fx_vp_id_set.add(u)
+
     npe.dummy_pin_count = dummy_pin_count
     return simple_g, npe
 
 
 def calc_vpin_laplacian(
-    vp_count: int,
-    net2pin_map: npt.NDArray[npt.NDArray[np.int32]],
-    pin2vpin_map: npt.NDArray[np.int32],
+    simple_graph: nx.Graph, node_id_array: npt.NDArray[np.int32]
 ) -> npt.NDArray[npt.NDArray[np.int32]]:
-    nx_graph, npe = create_simple_graph(vp_count, net2pin_map, pin2vpin_map)
-    return nx.laplacian_matrix(
-        nx_graph, nodelist=np.arange(vp_count + npe.dummy_pin_count)
-    ).toarray()
+    return nx.laplacian_matrix(simple_graph, nodelist=node_id_array).toarray()
