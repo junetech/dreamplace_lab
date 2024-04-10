@@ -5,8 +5,14 @@ from typing import Dict, List, Tuple
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
-from dreamplace.NetworkCalc import create_simple_graph, calc_vpin_laplacian
+from dreamplace.NetworkCalc import (
+    calc_vpin_laplacian,
+    create_simple_graph,
+    create_virtual_graph,
+)
 from dreamplace.PlaceDB import PlaceDB
+from dreamplace.VirtualElem import VPinDB, VPinStat
+from dreamplace.Partitioner import partition
 
 
 class MyProb(cp.Problem):
@@ -18,62 +24,86 @@ class MyProb(cp.Problem):
 def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, float]]:
     s_dt = datetime.datetime.now()
     # TODO: define these values outside the code
-    large_node_portion = 0.01
+    large_mv_node_portion = 0.00001
+    large_fx_node_portion = 0.0001
+
+    # alias
+    mv_node_count = placedb.num_movable_nodes
+    fx_node_count = placedb.num_terminals
 
     # largest movable nodes
-    large_node_count = np.ceil(placedb.num_movable_nodes * large_node_portion).astype(
-        int
-    )
+    large_node_count = np.ceil(mv_node_count * large_mv_node_portion).astype(int)
     logging.info(
         "  Among %d movable nodes, %d largest nodes are selected"
-        % (placedb.num_movable_nodes, large_node_count)
+        % (mv_node_count, large_node_count)
     )
     # print(
-    #     placedb.node_size_x[: placedb.num_movable_nodes]
-    #     * placedb.node_size_y[: placedb.num_movable_nodes]
+    #     placedb.node_size_x[: mv_node_count]
+    #     * placedb.node_size_y[: mv_node_count]
     # )
     large_mv_n_id_set = set(
         np.argpartition(
-            placedb.node_size_x[: placedb.num_movable_nodes]
-            * placedb.node_size_y[: placedb.num_movable_nodes],
+            placedb.node_size_x[:mv_node_count] * placedb.node_size_y[:mv_node_count],
             -large_node_count,
         )[-large_node_count:]
     )
     # print(type(large_mv_n_id_set), large_mv_n_id_set)
 
     # largest fixed nodes
-    large_node_count = np.ceil(placedb.num_terminals * large_node_portion).astype(int)
+    large_node_count = np.ceil(fx_node_count * large_fx_node_portion).astype(int)
     logging.info(
         "  Among %d fixed nodes, %d largest nodes are selected"
-        % (placedb.num_terminals, large_node_count)
+        % (fx_node_count, large_node_count)
     )
     # print(
     #     placedb.node_size_x[
-    #         placedb.num_movable_nodes : placedb.num_movable_nodes
-    #         + placedb.num_terminals
+    #         mv_node_count : mv_node_count
+    #         + fx_node_count
     #     ]
     #     * placedb.node_size_y[
-    #         placedb.num_movable_nodes : placedb.num_movable_nodes
-    #         + placedb.num_terminals
+    #         mv_node_count : mv_node_count
+    #         + fx_node_count
     #     ]
     # )
     large_fx_n_id_set = set(
         np.argpartition(
-            placedb.node_size_x[
-                placedb.num_movable_nodes : placedb.num_movable_nodes
-                + placedb.num_terminals
-            ]
-            * placedb.node_size_y[
-                placedb.num_movable_nodes : placedb.num_movable_nodes
-                + placedb.num_terminals
-            ],
+            placedb.node_size_x[mv_node_count : mv_node_count + fx_node_count]
+            * placedb.node_size_y[mv_node_count : mv_node_count + fx_node_count],
             -large_node_count,
         )[-large_node_count:]
-        + placedb.num_movable_nodes
+        + mv_node_count
     )
     # print(type(large_fx_n_id_set), large_fx_n_id_set)
 
-    mdl = make_qp_model(placedb, large_mv_n_id_set, large_fx_n_id_set)
+    # make virtual pins
+    vpin_db = create_vpin_db(placedb, large_mv_n_id_set, large_fx_n_id_set)
+    logging.info(f"Virtual pin definition takes {datetime.datetime.now()-s_dt}"[:-3])
+    s_dt = datetime.datetime.now()
+
+    # create simple graph
+    simple_graph, star_vertices = create_simple_graph(
+        vpin_db, placedb.net2pin_map, mv_node_count
+    )
+    logging.info(
+        f"Simple graph creation definition takes {datetime.datetime.now()-s_dt}"[:-3]
+    )
+    s_dt = datetime.datetime.now()
+
+    # partition movable vpins
+    partial_partition = partition(simple_graph, star_vertices)
+
+    # create virtual graph
+    vgraph, additional_partition_id_list = create_virtual_graph(
+        simple_graph, partial_partition
+    )
+    logging.info(
+        f"Virtual graph creation definition takes {datetime.datetime.now()-s_dt}"[:-3]
+    )
+    s_dt = datetime.datetime.now()
+    # create graph Laplacian
+    raise UserWarning
+    # create QP model
+    mdl = make_qp_model(placedb, vgraph)
     logging.info(
         f"Initial-placing large nodes: math model building takes {datetime.datetime.now() - s_dt} sec."
     )
@@ -87,52 +117,11 @@ def do_initial_place(placedb: PlaceDB) -> Tuple[Dict[int, float], Dict[int, floa
     return x_dict, y_dict
 
 
-class VPinStat:
-    def __init__(self):
-        # case 1 count
-        self.small_node_count = 0
-        self.small_node_original_pin_count = 0
-        # case 2 count
-        self.few_pins_count = 0
-        self.few_pins_original_pin_count = 0
-        # case 3 count
-        self.large_node_many_pins_count = 0
-        self.large_node_many_original_pin_count = 0
-        self.large_node_many_vpin_count = 0
-
-    def create_log(self):
-        logging.info(
-            "  %d small nodes have one vpin at the center" % self.small_node_count
-        )
-        logging.info(
-            "    %d pins -> %d vpins"
-            % (self.small_node_original_pin_count, self.small_node_count)
-        )
-        logging.info(
-            "  %d nodes with few pins have original pin offset" % self.few_pins_count
-        )
-        logging.info(
-            "    %d pins -> %d vpins"
-            % (self.few_pins_original_pin_count, self.few_pins_original_pin_count)
-        )
-        logging.info(
-            "  %d nodes with many pins have at most 4 vpins"
-            % self.large_node_many_pins_count
-        )
-        logging.info(
-            "    %d pins -> %d vpins"
-            % (self.large_node_many_original_pin_count, self.large_node_many_vpin_count)
-        )
-
-
-def make_qp_model(
+def create_vpin_db(
     placedb: PlaceDB,
     large_mv_n_id_set: set[int],
     large_fx_n_id_set: set[int],
-) -> MyProb:
-    s_dt = datetime.datetime.now()
-
-    # Index definition
+) -> VPinDB:
     # node count
     m_node_count = placedb.num_movable_nodes
     f_node_count = placedb.num_terminals
@@ -145,9 +134,6 @@ def make_qp_model(
     node2pin_map = placedb.node2pin_map
     # original pin offset
     pin_offset_x, pin_offset_y = placedb.pin_offset_x, placedb.pin_offset_y
-
-    # Virtual pin definition
-    mv_vp_count, fx_vp_count = 0, 0  # count of all virtual pins created
 
     # \cal{P}^0(n): node ID -> list of virtual pin ID
     vp_id_dict: dict[int, list[int]] = {}
@@ -255,14 +241,25 @@ def make_qp_model(
     total_vp_count = pin_into_vpin(fx_n_id_array, large_fx_n_id_set, mv_vp_count)
     fx_vp_count = total_vp_count - mv_vp_count
 
-    vpin2node_map = np.array(_vpin2node_map, dtype=np.int32)
-    vpin_offset_x = np.array(_vpin_offset_x, dtype=np.float32)
-    vpin_offset_y = np.array(_vpin_offset_y, dtype=np.float32)
+    vpin_db = VPinDB()
+    vpin_db.mv_vp_count = mv_vp_count
+    vpin_db.fx_vp_count = fx_vp_count
+    vpin_db.pin2vpin_map = pin2vpin_map
+    vpin_db.vpin2node_map = np.array(_vpin2node_map, dtype=np.int32)
+    vpin_db.vpin_offset_x = np.array(_vpin_offset_x, dtype=np.float32)
+    vpin_db.vpin_offset_y = np.array(_vpin_offset_y, dtype=np.float32)
 
-    logging.info(f"Virtual pin definition takes {datetime.datetime.now()-s_dt}"[:-3])
-    s_dt = datetime.datetime.now()
     logging.info("  Total %d virtual pins defined" % (total_vp_count))
     vpin_stat.create_log()
+    return vpin_db
+
+
+def make_qp_model(
+    placedb: PlaceDB, L_matrix: npt.NDArray[npt.NDArray[np.int32]]
+) -> MyProb:
+    s_dt = datetime.datetime.now()
+
+    # Index definition
 
     # Net reduction
     # \cal{P} <- \cal{E}

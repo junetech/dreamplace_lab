@@ -6,77 +6,87 @@ from itertools import combinations
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-
-
-class NodePinnEt:
-    dummy_pin_count: int
-
-    def __init__(self):
-        # cal{P}^m: set of pins in movable nodes selected
-        self.mv_vp_id_set: set[int] = set()
-        # cal{P}^f: set of pins in fixed nodes selected
-        self.fx_vp_id_set: set[int] = set()
-        # E^1: set of nets selected
-        self.net_id_set: set[int] = set()
-
-    def select_nodes_with_vpins(
-        self, vp_id_dict: dict[int, list[int]], vpin2node_map: npt.NDArray[np.int32]
-    ):
-        # \cal{N}^m: set of movable nodes selected
-        self.mv_n_id_set: set[int] = set(vpin2node_map[list(self.mv_vp_id_set)])
-
-        # \cal{N}^f: set of fixed nodes selected
-        self.fx_n_id_set: set[int] = set(vpin2node_map[list(self.fx_vp_id_set)])
-
-        # \cal{P}(n): node -> set of vpins
-        self.vp_id_dict: dict[int, set[int]] = {}
-        n_id_set = self.mv_n_id_set.union(self.fx_n_id_set)
-        vp_id_set = self.mv_vp_id_set.union(self.fx_vp_id_set)
-        for n_id in n_id_set:
-            self.vp_id_dict[n_id] = vp_id_set.intersection(vp_id_dict[n_id])
+from dreamplace.VirtualElem import VPinDB, StarVDB
 
 
 def create_simple_graph(
-    mv_vp_count: int,
-    fx_vp_count: int,
-    net2pin_map: npt.NDArray[npt.NDArray[np.int32]],
-    pin2vpin_map: npt.NDArray[np.int32],
-) -> tuple[nx.Graph, NodePinnEt]:
+    vpin_db: VPinDB, net2pin_map: npt.NDArray[npt.NDArray[np.int32]], mv_node_count: int
+) -> tuple[nx.Graph, StarVDB]:
     simple_g = nx.Graph()
-    npe = NodePinnEt()
+    star_v_db = StarVDB()
 
-    dummy_pin_count = 0
+    star_v_db.star_v_count = 0
     for net, pins_in_a_net in enumerate(net2pin_map):
-        vpin_set = set(pin2vpin_map[pins_in_a_net])
+        vpin_set = set(vpin_db.pin2vpin_map[pins_in_a_net])
         # if less than 2 vpins, skip
         if len(vpin_set) < 2:
             continue
-        # print(pins_in_a_net)
-        # print(pin2vpin_map)
-        # print(vpin_set)
-        # raise UserWarning
-        npe.net_id_set.add(net)
+
         # make a star graph
-        if False:  # len(vpin_set) >= 4:
-            dummy_vpin = dummy_pin_count + mv_vp_count + fx_vp_count
-            dummy_pin_count += 1
-            simple_g.add_edges_from([(u, dummy_vpin) for u in vpin_set], label=net)
+        if len(vpin_set) >= 4:
+            star_v = vpin_db.vp_count + star_v_db.star_v_count
+            star_v_db.star_v_count += 1
+            simple_g.add_edges_from([(u, star_v) for u in vpin_set], label=net)
+            # classify selected virtual pins into movable & fixed
             for u in vpin_set:
-                if u < mv_vp_count:
-                    npe.mv_vp_id_set.add(u)
+                if u < vpin_db.mv_vp_count:
+                    star_v_db.mv_vp_id_set.add(u)
                 else:
-                    npe.fx_vp_id_set.add(u)
+                    star_v_db.fx_vp_id_set.add(u)
+            # classify star vertices for fixed pins only
+            is_net_with_fixed_only = True
+            for u in vpin_set:
+                node = vpin_db.vpin2node_map[u]
+                if node > mv_node_count:
+                    is_net_with_fixed_only = False
+                    break
+            if is_net_with_fixed_only:
+                star_v_db.fx_star_v_id_list.extend(sorted(vpin_set))
+            else:
+                star_v_db.mv_star_v_id_list.extend(sorted(vpin_set))
+
         # make a clique
         else:  # 2 <= len(vpin_set) < 4
             simple_g.add_edges_from(combinations(vpin_set, 2), label=net)
             for u in vpin_set:
-                if u < mv_vp_count:
-                    npe.mv_vp_id_set.add(u)
+                if u < vpin_db.mv_vp_count:
+                    star_v_db.mv_vp_id_set.add(u)
                 else:
-                    npe.fx_vp_id_set.add(u)
+                    star_v_db.fx_vp_id_set.add(u)
 
-    npe.dummy_pin_count = dummy_pin_count
-    return simple_g, npe
+    return simple_g, star_v_db
+
+
+def create_virtual_graph(
+    simple_graph: nx.Graph, partial_partition: dict[int, int]
+) -> tuple[nx.Graph, list[int]]:
+    virtual_graph = nx.Graph()
+
+    max_partial_partition = max(partial_partition.values())
+    additional_partition_id = max_partial_partition + 1
+    additional_partition_id_list: list[int] = []
+
+    for v1, v2 in simple_graph.edges():
+        vnode1: int
+        vnode2: int
+        if v1 in partial_partition:
+            vnode1 = partial_partition[v1]
+        else:
+            vnode1 = additional_partition_id
+            additional_partition_id_list.append(vnode1)
+            additional_partition_id += 1
+        if v2 in partial_partition:
+            vnode2 = partial_partition[v2]
+        else:
+            vnode2 = additional_partition_id
+            additional_partition_id_list.append(vnode2)
+            additional_partition_id += 1
+        if vnode1 != vnode2:
+            if virtual_graph.has_edge(vnode1, vnode2):
+                virtual_graph[vnode1][vnode2]["weight"] += 1
+            else:
+                virtual_graph.add_edge(vnode1, vnode2, weight=1)
+    return virtual_graph, additional_partition_id_list
 
 
 def calc_vpin_laplacian(
