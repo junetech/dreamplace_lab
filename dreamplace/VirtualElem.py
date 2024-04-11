@@ -13,10 +13,44 @@ class VPinDB:
     def vp_count(self):
         return self.mv_vp_count + self.fx_vp_count
 
-    pin2vpin_map: npt.NDArray[np.int32]
-    vpin2node_map: npt.NDArray[np.int32]
+    # virtual pin offset from southwest corner
     vpin_offset_x: npt.NDArray[np.float32]
     vpin_offset_y: npt.NDArray[np.float32]
+
+    # node classification
+    is_movable_node: npt.NDArray[bool]
+    is_small_node: npt.NDArray[bool]
+
+    # pin mapping
+    node2vpin_array_dict: dict[int, npt.NDArray[np.int32]]
+    pin2vpin_map: npt.NDArray[np.int32]
+    vpin2node_map: npt.NDArray[np.int32]
+
+    def preset_vp_id_list(self, is_used_array):
+        sm_vp_id_list: list[int] = []
+        lm_vp_id_list: list[int] = []
+        sf_vp_id_list: list[int] = []
+        lf_vp_id_list: list[int] = []
+
+        for n_id, is_used in enumerate(is_used_array):
+            if not is_used:
+                print("Node", n_id, "is not used")
+                continue
+            if self.is_movable_node[n_id]:
+                if self.is_small_node[n_id]:
+                    sm_vp_id_list.extend(self.node2vpin_array_dict[n_id])
+                else:
+                    lm_vp_id_list.extend(self.node2vpin_array_dict[n_id])
+            else:
+                if self.is_small_node[n_id]:
+                    sf_vp_id_list.extend(self.node2vpin_array_dict[n_id])
+                else:
+                    lf_vp_id_list.extend(self.node2vpin_array_dict[n_id])
+
+        self.small_movable_vp_id_list = np.array(sm_vp_id_list, dtype=np.int32)
+        self.large_movable_vp_id_list = np.array(lm_vp_id_list, dtype=np.int32)
+        self.small_fixed_vp_id_list = np.array(sf_vp_id_list, dtype=np.int32)
+        self.large_fixed_vp_id_list = np.array(lf_vp_id_list, dtype=np.int32)
 
 
 class VPinStat:
@@ -58,30 +92,31 @@ class VPinStat:
 
 
 class StarVDB:
-    star_v_count: int
+    # set of star vertices for nets with movable pins
+    mv_star_v_id_list: npt.NDArray[np.int32]
+    # set of star vertices for nets with fixed pins only
+    fx_star_v_id_list: npt.NDArray[np.int32]
+    # node classification
+    is_selected: npt.NDArray[bool]
 
     def __init__(self):
-        # cal{P}^m: set of pins in movable nodes selected
-        self.mv_vp_id_set: set[int] = set()
-        # cal{P}^f: set of pins in fixed nodes selected
-        self.fx_vp_id_set: set[int] = set()
-        # set of star vertices for nets with fixed pins only
-        self.fx_star_v_id_list: list[int] = []
-        # set of star vertices for nets with movable pins
-        self.mv_star_v_id_list: list[int] = []
+        self.star_v_count = 0
 
-    def select_nodes_with_vpins(
-        self, vp_id_dict: dict[int, list[int]], vpin2node_map: npt.NDArray[np.int32]
-    ):
-        # \cal{N}^m: set of movable nodes selected
-        self.mv_n_id_set: set[int] = set(vpin2node_map[list(self.mv_vp_id_set)])
 
-        # \cal{N}^f: set of fixed nodes selected
-        self.fx_n_id_set: set[int] = set(vpin2node_map[list(self.fx_vp_id_set)])
+class PartitionDB:
+    # partitions for movable small pins & star vertices
+    ms_mt_partition_dict: dict[int, int]
+    # partitions for remaining elements
+    other_partition_dict: dict[int, int]
 
-        # \cal{P}(n): node -> set of vpins
-        self.vp_id_dict: dict[int, set[int]] = {}
-        n_id_set = self.mv_n_id_set.union(self.fx_n_id_set)
-        vp_id_set = self.mv_vp_id_set.union(self.fx_vp_id_set)
-        for n_id in n_id_set:
-            self.vp_id_dict[n_id] = vp_id_set.intersection(vp_id_dict[n_id])
+    def report(self):
+        ms_mt_part_count = len(set(self.ms_mt_partition_dict.values()))
+        logging.info(
+            "%d movable small nodes & movable star nodes have %d partitions"
+            % (len(self.ms_mt_partition_dict), ms_mt_part_count)
+        )
+        other_part_count = len(set(self.other_partition_dict.values()))
+        logging.info(
+            "%d other elements have %d partitions"
+            % (len(self.other_partition_dict), other_part_count)
+        )
